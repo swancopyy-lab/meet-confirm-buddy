@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import {
   addCollaborator,
+  bulkUpdateCaptions,
   clearEventImage,
   createCollaboratorAccount,
   createInvitations,
