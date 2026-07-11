@@ -274,6 +274,10 @@ function EventEditor() {
             <DownloadAllButton ev={ev} invitations={invitations} origin={origin} />
           )}
 
+          {isHost && invitations.length > 0 && (
+            <BulkCaptionsButton eventId={ev.id} invitations={invitations} />
+          )}
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 print:grid-cols-2">
             {invitations.map((inv, idx) => (
               <InvitationCard
