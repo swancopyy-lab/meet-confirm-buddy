@@ -59,11 +59,16 @@ export type Database = {
         Row: {
           already_image_url: string | null
           bride_name: string | null
+          caption_align: string
           caption_font_family: string
           caption_font_size: number
+          caption_font_weight: number
           caption_number_color: string
+          caption_show_box: boolean
           caption_show_number: boolean
           caption_text_color: string
+          caption_x: number
+          caption_y: number
           companions_enabled: boolean
           created_at: string
           event_date: string | null
@@ -72,6 +77,12 @@ export type Database = {
           id: string
           invitation_image_url: string | null
           notes: string | null
+          number_in_filename: boolean
+          number_on_image: boolean
+          qr_bg_color: string
+          qr_color: string
+          qr_ecc: string
+          qr_margin: number
           qr_size: number
           qr_x: number
           qr_y: number
@@ -84,11 +95,16 @@ export type Database = {
         Insert: {
           already_image_url?: string | null
           bride_name?: string | null
+          caption_align?: string
           caption_font_family?: string
           caption_font_size?: number
+          caption_font_weight?: number
           caption_number_color?: string
+          caption_show_box?: boolean
           caption_show_number?: boolean
           caption_text_color?: string
+          caption_x?: number
+          caption_y?: number
           companions_enabled?: boolean
           created_at?: string
           event_date?: string | null
@@ -97,6 +113,12 @@ export type Database = {
           id?: string
           invitation_image_url?: string | null
           notes?: string | null
+          number_in_filename?: boolean
+          number_on_image?: boolean
+          qr_bg_color?: string
+          qr_color?: string
+          qr_ecc?: string
+          qr_margin?: number
           qr_size?: number
           qr_x?: number
           qr_y?: number
@@ -109,11 +131,16 @@ export type Database = {
         Update: {
           already_image_url?: string | null
           bride_name?: string | null
+          caption_align?: string
           caption_font_family?: string
           caption_font_size?: number
+          caption_font_weight?: number
           caption_number_color?: string
+          caption_show_box?: boolean
           caption_show_number?: boolean
           caption_text_color?: string
+          caption_x?: number
+          caption_y?: number
           companions_enabled?: boolean
           created_at?: string
           event_date?: string | null
@@ -122,6 +149,12 @@ export type Database = {
           id?: string
           invitation_image_url?: string | null
           notes?: string | null
+          number_in_filename?: boolean
+          number_on_image?: boolean
+          qr_bg_color?: string
+          qr_color?: string
+          qr_ecc?: string
+          qr_margin?: number
           qr_size?: number
           qr_x?: number
           qr_y?: number

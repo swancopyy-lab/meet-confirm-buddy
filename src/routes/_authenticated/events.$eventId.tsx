@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import {
   addCollaborator,
+  bulkUpdateCaptions,
   clearEventImage,
   createCollaboratorAccount,
   createInvitations,
@@ -24,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
@@ -49,6 +51,8 @@ import {
   BookUser,
   Download,
   Share2,
+  Pencil,
+  Eye,
 } from "lucide-react";
 import { QRCard } from "@/components/QRCard";
 
@@ -87,6 +91,17 @@ type EventRow = {
   caption_number_color: string;
   caption_font_family: string;
   caption_font_size: number;
+  caption_x: number;
+  caption_y: number;
+  caption_show_box: boolean;
+  number_on_image: boolean;
+  number_in_filename: boolean;
+  qr_color: string;
+  qr_bg_color: string;
+  qr_ecc: "L" | "M" | "Q" | "H";
+  qr_margin: number;
+  caption_align: "left" | "center" | "right";
+  caption_font_weight: number;
 };
 
 type Invitation = {
@@ -259,6 +274,10 @@ function EventEditor() {
             <DownloadAllButton ev={ev} invitations={invitations} origin={origin} />
           )}
 
+          {isHost && invitations.length > 0 && (
+            <BulkCaptionsButton eventId={ev.id} invitations={invitations} />
+          )}
+
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 print:grid-cols-2">
             {invitations.map((inv, idx) => (
               <InvitationCard
@@ -297,10 +316,11 @@ function EventEditor() {
         {isHost && <TabsContent value="design">
           <InvitationDesigner
             ev={ev}
+            invitations={invitations}
             uploading={uploadMut.isPending}
             onUpload={(dataUrl) => uploadMut.mutate({ kind: "invitation", data_url: dataUrl })}
             onClear={() => clearMut.mutate("invitation")}
-            onSavePosition={(patch) => saveMut.mutate({ ...ev, ...patch })}
+            onSaveDesign={(patch) => saveMut.mutate({ ...ev, ...patch })}
             saving={saveMut.isPending}
           />
         </TabsContent>}
@@ -500,11 +520,18 @@ async function composeInvitationDataUrl(
   origin: string,
 ): Promise<string> {
   const scanUrl = `${origin}/s/${inv.scan_code}`;
-  const showNumber = !!ev.caption_show_number;
+  const showNumber = !!ev.caption_show_number && !!ev.number_on_image;
+  const showBox = ev.caption_show_box !== false;
   const captionText = (inv.caption_text || "").trim();
   const numberColor = ev.caption_number_color || "#111111";
   const textColor = ev.caption_text_color || "#111111";
   const fontFamily = ev.caption_font_family || "sans-serif";
+  const align = (ev.caption_align || "center") as "left" | "center" | "right";
+  const weight = ev.caption_font_weight || 600;
+  const qrDark = ev.qr_color || "#0F3D2E";
+  const qrLight = ev.qr_bg_color || "#FFFFFF";
+  const qrEcc = (ev.qr_ecc || "M") as "L" | "M" | "Q" | "H";
+  const qrMargin = Number.isFinite(ev.qr_margin) ? ev.qr_margin : 1;
 
   // Fallback: no invitation image → export QR + label only
   if (!ev.invitation_image_url) {
@@ -518,8 +545,9 @@ async function composeInvitationDataUrl(
     const qrCanvas = document.createElement("canvas");
     await QRCode.toCanvas(qrCanvas, scanUrl, {
       width: size,
-      margin: 1,
-      color: { dark: "#0F3D2E", light: "#FFFFFF" },
+      margin: qrMargin,
+      errorCorrectionLevel: qrEcc,
+      color: { dark: qrDark, light: qrLight },
     });
     ctx.drawImage(qrCanvas, 0, 0, size, size);
     ctx.textAlign = "center";
@@ -532,7 +560,7 @@ async function composeInvitationDataUrl(
     }
     if (captionText) {
       ctx.fillStyle = textColor;
-      ctx.font = `600 48px ${fontFamily}`;
+      ctx.font = `${weight} 48px ${fontFamily}`;
       ctx.fillText(captionText, size / 2, y + 40);
     }
     return canvas.toDataURL("image/png");
@@ -559,44 +587,57 @@ async function composeInvitationDataUrl(
   const qrY = qrCy - qrSizePx / 2;
   const pad = qrSizePx * 0.06;
 
-  ctx.fillStyle = "#fff";
+  // Draw white plate behind QR only if bg not transparent-ish
+  ctx.fillStyle = qrLight;
   ctx.fillRect(qrX - pad, qrY - pad, qrSizePx + pad * 2, qrSizePx + pad * 2);
 
   const qrCanvas = document.createElement("canvas");
   await QRCode.toCanvas(qrCanvas, scanUrl, {
     width: Math.max(256, Math.round(qrSizePx)),
-    margin: 1,
-    color: { dark: "#0F3D2E", light: "#FFFFFF" },
+    margin: qrMargin,
+    errorCorrectionLevel: qrEcc,
+    color: { dark: qrDark, light: qrLight },
   });
   ctx.drawImage(qrCanvas, qrX, qrY, qrSizePx, qrSizePx);
 
-  // Caption(s) under the QR: optional number and optional custom text (no # prefix)
+  // Caption block positioned by caption_x / caption_y (percent of image)
   const numberFontSize = Math.max(14, Math.round(qrSizePx * ((ev.caption_font_size ?? 28) / 100)));
   const textFontSize = Math.max(14, Math.round(qrSizePx * ((ev.caption_font_size ?? 28) / 100) * 0.9));
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  let cursorY = qrY + qrSizePx + pad + 6;
-  if (showNumber) {
-    const label = String(number);
-    ctx.font = `bold ${numberFontSize}px ${fontFamily}`;
-    const labelW = ctx.measureText(label).width + 24;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(qrCx - labelW / 2, cursorY - 2, labelW, numberFontSize + 12);
-    ctx.fillStyle = numberColor;
-    ctx.fillText(label, qrCx, cursorY + 4);
-    cursorY += numberFontSize + 14;
-  }
-  if (captionText) {
-    ctx.font = `600 ${textFontSize}px ${fontFamily}`;
-    const textW = ctx.measureText(captionText).width + 24;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(qrCx - textW / 2, cursorY - 2, textW, textFontSize + 12);
-    ctx.fillStyle = textColor;
-    ctx.fillText(captionText, qrCx, cursorY + 4);
+  const capCx = (Number(ev.caption_x ?? 50) / 100) * w;
+  const capCy = (Number(ev.caption_y ?? 92) / 100) * h;
+  ctx.textAlign = align === "left" ? "left" : align === "right" ? "right" : "center";
+  ctx.textBaseline = "middle";
+
+  const lines: Array<{ text: string; color: string; size: number; weight: number | "bold" }> = [];
+  if (showNumber) lines.push({ text: String(number), color: numberColor, size: numberFontSize, weight: "bold" });
+  if (captionText) lines.push({ text: captionText, color: textColor, size: textFontSize, weight });
+
+  if (lines.length > 0) {
+    const gap = 8;
+    const totalH = lines.reduce((s, l) => s + l.size + gap, -gap);
+    let cy = capCy - totalH / 2 + lines[0].size / 2;
+    for (const l of lines) {
+      ctx.font = `${l.weight} ${l.size}px ${fontFamily}`;
+      if (showBox) {
+        const tw = ctx.measureText(l.text).width;
+        const padX = 12;
+        const padY = 6;
+        const boxW = tw + padX * 2;
+        const boxH = l.size + padY * 2;
+        const boxX = align === "left" ? capCx : align === "right" ? capCx - boxW : capCx - boxW / 2;
+        const boxY = cy - boxH / 2;
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+      }
+      ctx.fillStyle = l.color;
+      ctx.fillText(l.text, capCx, cy);
+      cy += l.size + gap;
+    }
   }
 
   return canvas.toDataURL("image/png");
 }
+
 
 function dataUrlToBlob(dataUrl: string): Blob {
   const [head, b64] = dataUrl.split(",");
@@ -868,26 +909,92 @@ function ScanPagesDesigner({
   );
 }
 
+type DesignPatch = Partial<{
+  qr_x: number;
+  qr_y: number;
+  qr_size: number;
+  caption_x: number;
+  caption_y: number;
+  caption_show_number: boolean;
+  caption_show_box: boolean;
+  number_on_image: boolean;
+  number_in_filename: boolean;
+  caption_text_color: string;
+  caption_number_color: string;
+  caption_font_family: string;
+  caption_font_size: number;
+  caption_align: "left" | "center" | "right";
+  caption_font_weight: number;
+  qr_color: string;
+  qr_bg_color: string;
+  qr_ecc: "L" | "M" | "Q" | "H";
+  qr_margin: number;
+}>;
+
 function InvitationDesigner({
   ev,
+  invitations,
   uploading,
   onUpload,
   onClear,
-  onSavePosition,
+  onSaveDesign,
   saving,
 }: {
   ev: EventRow;
+  invitations: Invitation[];
   uploading?: boolean;
   onUpload: (dataUrl: string) => void;
   onClear: () => void;
-  onSavePosition: (patch: { qr_x: number; qr_y: number; qr_size: number }) => void;
+  onSaveDesign: (patch: DesignPatch) => void;
   saving?: boolean;
 }) {
+  // Local editable state
   const [qrX, setQrX] = useState<number>(Number(ev.qr_x ?? 50));
   const [qrY, setQrY] = useState<number>(Number(ev.qr_y ?? 80));
   const [qrSize, setQrSize] = useState<number>(Number(ev.qr_size ?? 22));
+  const [capX, setCapX] = useState<number>(Number(ev.caption_x ?? 50));
+  const [capY, setCapY] = useState<number>(Number(ev.caption_y ?? 92));
+
+  const [showNumber, setShowNumber] = useState<boolean>(!!ev.caption_show_number);
+  const [showBox, setShowBox] = useState<boolean>(ev.caption_show_box !== false);
+  const [numberOnImage, setNumberOnImage] = useState<boolean>(ev.number_on_image !== false);
+  const [numberInFilename, setNumberInFilename] = useState<boolean>(ev.number_in_filename !== false);
+
+  const [textColor, setTextColor] = useState<string>(ev.caption_text_color || "#111111");
+  const [numberColor, setNumberColor] = useState<string>(ev.caption_number_color || "#111111");
+  const [fontFamily, setFontFamily] = useState<string>(ev.caption_font_family || "sans-serif");
+  const [fontSize, setFontSize] = useState<number>(Number(ev.caption_font_size ?? 28));
+  const [align, setAlign] = useState<"left" | "center" | "right">((ev.caption_align as "left" | "center" | "right") || "center");
+  const [weight, setWeight] = useState<number>(Number(ev.caption_font_weight ?? 600));
+
+  const [qrColor, setQrColor] = useState<string>(ev.qr_color || "#0F3D2E");
+  const [qrBgColor, setQrBgColor] = useState<string>(ev.qr_bg_color || "#FFFFFF");
+  const [qrEcc, setQrEcc] = useState<"L" | "M" | "Q" | "H">((ev.qr_ecc as "L" | "M" | "Q" | "H") || "M");
+  const [qrMargin, setQrMargin] = useState<number>(Number(ev.qr_margin ?? 1));
+
+  const [sampleId, setSampleId] = useState<string>(invitations[0]?.id || "");
+  const sample = invitations.find((i) => i.id === sampleId) || invitations[0] || null;
+  const sampleNumber = sample?.display_number ?? 1;
+  const sampleText = sample?.caption_text || "نموذج للنص";
+
   const fileRef = useRef<HTMLInputElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState<"qr" | "cap" | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
+
+  // Regenerate preview QR when colors/ecc/margin change
+  const previewUrl = "https://example.com/preview";
+  const qrKey = `${qrColor}|${qrBgColor}|${qrEcc}|${qrMargin}`;
+  const qrKeyRef = useRef("");
+  if (qrKeyRef.current !== qrKey) {
+    qrKeyRef.current = qrKey;
+    QRCode.toDataURL(previewUrl, {
+      width: 512,
+      margin: qrMargin,
+      errorCorrectionLevel: qrEcc,
+      color: { dark: qrColor, light: qrBgColor },
+    }).then(setQrDataUrl).catch(() => {});
+  }
 
   async function onFile(f: File) {
     if (f.size > 4 * 1024 * 1024) { toast.error("الصورة كبيرة جداً. الحد الأقصى 4 ميجابايت."); return; }
@@ -896,80 +1003,282 @@ function InvitationDesigner({
     reader.readAsDataURL(f);
   }
 
-  function handlePreviewClick(e: React.MouseEvent<HTMLDivElement>) {
-    if (!previewRef.current) return;
+  function pctFromEvent(e: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) {
+    if (!previewRef.current) return { x: 0, y: 0 };
     const rect = previewRef.current.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    setQrX(Math.max(0, Math.min(100, x)));
-    setQrY(Math.max(0, Math.min(100, y)));
+    const cx = "clientX" in e ? e.clientX : 0;
+    const cy = "clientY" in e ? e.clientY : 0;
+    return {
+      x: Math.max(0, Math.min(100, ((cx - rect.left) / rect.width) * 100)),
+      y: Math.max(0, Math.min(100, ((cy - rect.top) / rect.height) * 100)),
+    };
   }
 
+  function handleMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragging) return;
+    const p = pctFromEvent(e);
+    if (dragging === "qr") { setQrX(p.x); setQrY(p.y); }
+    else { setCapX(p.x); setCapY(p.y); }
+  }
+
+  function saveAll() {
+    onSaveDesign({
+      qr_x: qrX, qr_y: qrY, qr_size: qrSize,
+      caption_x: capX, caption_y: capY,
+      caption_show_number: showNumber,
+      caption_show_box: showBox,
+      number_on_image: numberOnImage,
+      number_in_filename: numberInFilename,
+      caption_text_color: textColor,
+      caption_number_color: numberColor,
+      caption_font_family: fontFamily,
+      caption_font_size: fontSize,
+      caption_align: align,
+      caption_font_weight: weight,
+      qr_color: qrColor,
+      qr_bg_color: qrBgColor,
+      qr_ecc: qrEcc,
+      qr_margin: qrMargin,
+    });
+  }
+
+  const textAlignCss: React.CSSProperties["textAlign"] = align;
+  const captionTransform =
+    align === "left" ? "translate(0, -50%)" : align === "right" ? "translate(-100%, -50%)" : "translate(-50%, -50%)";
+
   return (
-    <Card className="border-gold/30">
-      <CardHeader>
-        <CardTitle className="font-serif">صورة الدعوة وموقع الباركود</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <input ref={fileRef} type="file" accept="image/*" hidden
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }} />
-          <Button type="button" variant="outline" disabled={uploading} onClick={() => fileRef.current?.click()}>
-            <Upload className="size-4" />
-            {uploading ? "جاري الرفع..." : ev.invitation_image_url ? "تغيير الصورة" : "رفع صورة الدعوة"}
-          </Button>
-          {ev.invitation_image_url && (
-            <Button type="button" variant="ghost" onClick={onClear}>
-              <Trash2 className="size-4" /> إزالة الصورة
-            </Button>
-          )}
-        </div>
-
-        {ev.invitation_image_url ? (
-          <>
-            <p className="text-xs text-muted-foreground">اضغط أو اسحب على الصورة لتحديد مكان الباركود. المعاينة تظهر بنفس الشكل الذي يراه المدعو.</p>
-            <div
-              ref={previewRef}
-              onClick={handlePreviewClick}
-              className="relative mx-auto w-full max-w-md cursor-crosshair overflow-hidden rounded-md border border-gold/30 select-none"
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <Card className="border-gold/30">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="font-serif">معاينة صورة الدعوة</CardTitle>
+          {invitations.length > 0 && (
+            <select
+              value={sampleId || invitations[0]?.id || ""}
+              onChange={(e) => setSampleId(e.target.value)}
+              className="rounded-md border border-input bg-background px-2 py-1 text-xs"
             >
-              <img src={ev.invitation_image_url} alt="معاينة" className="block w-full h-auto" draggable={false} />
-              <div
-                className="absolute pointer-events-none overflow-hidden"
-                style={{ left: `${qrX}%`, top: `${qrY}%`, width: `${qrSize}%`, aspectRatio: "1 / 1", transform: "translate(-50%, -50%)" }}
-              >
-                <div className="bg-white p-1.5 rounded shadow-md w-full h-full ring-2 ring-gold/70 overflow-hidden">
-                  <QRCard url="https://example.com/preview" size={512} />
-                </div>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <div>
-                <Label className="text-xs">حجم الباركود ({Math.round(qrSize)}%)</Label>
-                <Slider value={[qrSize]} min={10} max={60} step={1} onValueChange={(v) => setQrSize(v[0])} />
-              </div>
-              <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground">
-                <span>X: {Math.round(qrX)}%</span>
-                <span>Y: {Math.round(qrY)}%</span>
-              </div>
-            </div>
-            <div className="flex justify-end">
-              <Button disabled={saving} onClick={() => onSavePosition({ qr_x: qrX, qr_y: qrY, qr_size: qrSize })}>
-                {saving ? "جاري الحفظ..." : "حفظ موضع الباركود"}
+              {invitations.map((i) => (
+                <option key={i.id} value={i.id}>
+                  دعوة #{i.display_number ?? "?"} {i.caption_text ? `— ${i.caption_text}` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap gap-2">
+            <input ref={fileRef} type="file" accept="image/*" hidden
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }} />
+            <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+              <Upload className="size-4" />
+              {uploading ? "جاري الرفع..." : ev.invitation_image_url ? "تغيير الصورة" : "رفع صورة الدعوة"}
+            </Button>
+            {ev.invitation_image_url && (
+              <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+                <Trash2 className="size-4" /> إزالة
               </Button>
-            </div>
-          </>
-
-        ) : (
-          <div className="flex flex-col items-center gap-2 rounded-md border-2 border-dashed border-gold/30 p-12 text-center text-muted-foreground">
-            <ImageIcon className="size-10 text-gold/60" />
-            <p>ارفع صورة الدعوة لتظهر للمدعوين مع باركودهم في المكان الذي تختاره.</p>
+            )}
           </div>
-        )}
-      </CardContent>
-    </Card>
+
+          {ev.invitation_image_url ? (
+            <>
+              <p className="text-xs text-muted-foreground">اسحب الباركود أو النص على الصورة لتحديد الموقع.</p>
+              <div
+                ref={previewRef}
+                onPointerMove={handleMove}
+                onPointerUp={() => setDragging(null)}
+                onPointerLeave={() => setDragging(null)}
+                className="relative mx-auto w-full max-w-md overflow-hidden rounded-md border border-gold/30 select-none touch-none"
+              >
+                <img src={ev.invitation_image_url} alt="معاينة" className="block w-full h-auto" draggable={false} />
+                {/* QR overlay */}
+                <div
+                  onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging("qr"); }}
+                  className="absolute cursor-move"
+                  style={{ left: `${qrX}%`, top: `${qrY}%`, width: `${qrSize}%`, aspectRatio: "1 / 1", transform: "translate(-50%, -50%)" }}
+                >
+                  <div className="w-full h-full ring-2 ring-gold/70 overflow-hidden" style={{ background: qrBgColor }}>
+                    {qrDataUrl && <img src={qrDataUrl} alt="qr" className="w-full h-full block" draggable={false} />}
+                  </div>
+                </div>
+                {/* Caption overlay */}
+                {(showNumber || sampleText) && (
+                  <div
+                    onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging("cap"); }}
+                    className="absolute cursor-move ring-1 ring-dashed ring-gold/50 px-2 py-1"
+                    style={{
+                      left: `${capX}%`,
+                      top: `${capY}%`,
+                      transform: captionTransform,
+                      textAlign: textAlignCss,
+                      fontFamily,
+                      minWidth: "40px",
+                      background: showBox ? "rgba(255,255,255,0.85)" : "transparent",
+                    }}
+                  >
+                    {showNumber && (
+                      <div style={{ color: numberColor, fontSize: `${Math.max(10, fontSize * 0.4)}px`, fontWeight: 700, lineHeight: 1.2 }}>
+                        {sampleNumber}
+                      </div>
+                    )}
+                    {sampleText && (
+                      <div style={{ color: textColor, fontSize: `${Math.max(9, fontSize * 0.35)}px`, fontWeight: weight, lineHeight: 1.2 }}>
+                        {sampleText}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center gap-2 rounded-md border-2 border-dashed border-gold/30 p-12 text-center text-muted-foreground">
+              <ImageIcon className="size-10 text-gold/60" />
+              <p>ارفع صورة الدعوة لتظهر للمدعوين مع باركودهم في المكان الذي تختاره.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-gold/30">
+        <CardHeader>
+          <CardTitle className="font-serif text-base">خيارات التصميم</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Barcode */}
+          <section className="space-y-2">
+            <p className="text-xs font-semibold">الباركود</p>
+            <div>
+              <Label className="text-xs">الحجم ({Math.round(qrSize)}%)</Label>
+              <Slider value={[qrSize]} min={10} max={60} step={1} onValueChange={(v) => setQrSize(v[0])} />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">X ({Math.round(qrX)}%)</Label>
+                <Slider value={[qrX]} min={0} max={100} step={1} onValueChange={(v) => setQrX(v[0])} />
+              </div>
+              <div>
+                <Label className="text-xs">Y ({Math.round(qrY)}%)</Label>
+                <Slider value={[qrY]} min={0} max={100} step={1} onValueChange={(v) => setQrY(v[0])} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">لون النقاط</Label>
+                <Input type="color" value={qrColor} onChange={(e) => setQrColor(e.target.value)} className="h-9 p-1" />
+              </div>
+              <div>
+                <Label className="text-xs">لون الخلفية</Label>
+                <Input type="color" value={qrBgColor} onChange={(e) => setQrBgColor(e.target.value)} className="h-9 p-1" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">تصحيح الخطأ</Label>
+                <select value={qrEcc} onChange={(e) => setQrEcc(e.target.value as "L" | "M" | "Q" | "H")}
+                  className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm">
+                  <option value="L">L — منخفض</option>
+                  <option value="M">M — متوسط</option>
+                  <option value="Q">Q — عالي</option>
+                  <option value="H">H — الأعلى</option>
+                </select>
+              </div>
+              <div>
+                <Label className="text-xs">الهامش ({qrMargin})</Label>
+                <Slider value={[qrMargin]} min={0} max={8} step={1} onValueChange={(v) => setQrMargin(v[0])} />
+              </div>
+            </div>
+          </section>
+
+          {/* Caption */}
+          <section className="space-y-2 border-t border-gold/20 pt-3">
+            <p className="text-xs font-semibold">النص والرقم</p>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={showNumber} onChange={(e) => setShowNumber(e.target.checked)} />
+              إظهار رقم الدعوة تحت النص
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={showBox} onChange={(e) => setShowBox(e.target.checked)} />
+              خلفية بيضاء خلف النص
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">X ({Math.round(capX)}%)</Label>
+                <Slider value={[capX]} min={0} max={100} step={1} onValueChange={(v) => setCapX(v[0])} />
+              </div>
+              <div>
+                <Label className="text-xs">Y ({Math.round(capY)}%)</Label>
+                <Slider value={[capY]} min={0} max={100} step={1} onValueChange={(v) => setCapY(v[0])} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">لون النص</Label>
+                <Input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="h-9 p-1" />
+              </div>
+              <div>
+                <Label className="text-xs">لون الرقم</Label>
+                <Input type="color" value={numberColor} onChange={(e) => setNumberColor(e.target.value)} className="h-9 p-1" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">الخط</Label>
+              <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm">
+                <option value="sans-serif">Sans Serif</option>
+                <option value="serif">Serif</option>
+                <option value="'Amiri', serif">Amiri (عربي)</option>
+                <option value="'Cairo', sans-serif">Cairo (عربي)</option>
+                <option value="'Tajawal', sans-serif">Tajawal (عربي)</option>
+                <option value="monospace">Monospace</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">الحجم ({fontSize})</Label>
+                <Slider value={[fontSize]} min={10} max={80} step={1} onValueChange={(v) => setFontSize(v[0])} />
+              </div>
+              <div>
+                <Label className="text-xs">وزن الخط ({weight})</Label>
+                <Slider value={[weight]} min={100} max={900} step={100} onValueChange={(v) => setWeight(v[0])} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">المحاذاة</Label>
+              <div className="flex gap-1">
+                {(["right", "center", "left"] as const).map((a) => (
+                  <Button key={a} size="sm" type="button" variant={align === a ? "default" : "outline"} onClick={() => setAlign(a)}>
+                    {a === "right" ? "يمين" : a === "left" ? "يسار" : "وسط"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          {/* Numbering */}
+          <section className="space-y-2 border-t border-gold/20 pt-3">
+            <p className="text-xs font-semibold">الترقيم</p>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={numberOnImage} onChange={(e) => setNumberOnImage(e.target.checked)} />
+              طباعة رقم الدعوة داخل الصورة
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={numberInFilename} onChange={(e) => setNumberInFilename(e.target.checked)} />
+              تضمين الرقم في اسم ملف التحميل
+            </label>
+            <p className="text-[10px] text-muted-foreground">
+              يمكن اختيار الاثنين معاً أو أحدهما أو تعطيلهما. الرقم داخل الصورة يعمل عند تفعيل "إظهار رقم الدعوة".
+            </p>
+          </section>
+
+          <Button className="w-full" disabled={saving} onClick={saveAll}>
+            {saving ? "جاري الحفظ..." : "حفظ التصميم"}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
+
 
 function InvitationCard({
   inv,
@@ -995,6 +1304,7 @@ function InvitationCard({
   const [caption, setCaption] = useState(inv.caption_text || "");
   const [showWa, setShowWa] = useState(false);
   const [waMsg, setWaMsg] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   function copy(url: string, label: string) {
     navigator.clipboard.writeText(url);
@@ -1018,7 +1328,9 @@ function InvitationCard({
 
   const [downloading, setDownloading] = useState(false);
   const [sharing, setSharing] = useState(false);
-  const filename = `invitation-${String(number).padStart(3, "0")}-${inv.code}.png`;
+  const filename = ev.number_in_filename
+    ? `invitation-${String(number).padStart(3, "0")}-${inv.code}.png`
+    : `invitation-${inv.code}.png`;
 
   async function downloadCard() {
     try {
@@ -1090,14 +1402,26 @@ function InvitationCard({
           )}
           <p className="font-mono text-xs tracking-widest text-muted-foreground">{number} · {inv.code}</p>
         </div>
-        <div className="grid grid-cols-2 gap-2 print:hidden">
+        <div className="grid grid-cols-3 gap-2 print:hidden">
           <Button variant="outline" size="sm" disabled={downloading} onClick={downloadCard}>
             <Download className="size-3.5" /> {downloading ? "..." : "تنزيل"}
           </Button>
           <Button variant="outline" size="sm" disabled={sharing} onClick={shareCard}>
             <Share2 className="size-3.5" /> {sharing ? "..." : "مشاركة"}
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
+            <Eye className="size-3.5" /> معاينة
+          </Button>
         </div>
+        <InvitationPreviewDialog
+          inv={inv}
+          ev={ev}
+          origin={origin}
+          number={number}
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          onSaveDetails={(v) => onSaveDetails(v)}
+        />
 
 
 
@@ -1177,11 +1501,6 @@ function EventForm({
     notes: string | null;
     scan_date?: string | null;
     companions_enabled?: boolean;
-    caption_show_number?: boolean;
-    caption_text_color?: string;
-    caption_number_color?: string;
-    caption_font_family?: string;
-    caption_font_size?: number;
   };
   onSubmit: (v: {
     title: string;
@@ -1193,20 +1512,10 @@ function EventForm({
     notes?: string;
     scan_date?: string | null;
     companions_enabled?: boolean;
-    caption_show_number?: boolean;
-    caption_text_color?: string;
-    caption_number_color?: string;
-    caption_font_family?: string;
-    caption_font_size?: number;
   }) => void;
   loading?: boolean;
 }) {
   const [companionsOn, setCompanionsOn] = useState<boolean>(initial?.companions_enabled ?? true);
-  const [showNumber, setShowNumber] = useState<boolean>(initial?.caption_show_number ?? false);
-  const [textColor, setTextColor] = useState<string>(initial?.caption_text_color || "#111111");
-  const [numberColor, setNumberColor] = useState<string>(initial?.caption_number_color || "#111111");
-  const [fontFamily, setFontFamily] = useState<string>(initial?.caption_font_family || "sans-serif");
-  const [fontSize, setFontSize] = useState<number>(initial?.caption_font_size ?? 28);
 
   return (
     <form className="space-y-4" onSubmit={(e) => {
@@ -1222,11 +1531,6 @@ function EventForm({
         notes: (fd.get("notes") as string) || undefined,
         scan_date: (fd.get("scan_date") as string) || null,
         companions_enabled: companionsOn,
-        caption_show_number: showNumber,
-        caption_text_color: textColor,
-        caption_number_color: numberColor,
-        caption_font_family: fontFamily,
-        caption_font_size: fontSize,
       });
     }}>
       <div className="space-y-2">
@@ -1279,45 +1583,7 @@ function EventForm({
         </label>
       </div>
 
-      <div className="space-y-3 rounded-md border border-gold/30 bg-secondary/30 p-3">
-        <p className="font-serif text-sm font-semibold">التسمية أسفل الباركود</p>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={showNumber} onChange={(e) => setShowNumber(e.target.checked)} />
-          إظهار الرقم التلقائي لكل باركود
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs">لون الرقم</Label>
-            <Input type="color" value={numberColor} onChange={(e) => setNumberColor(e.target.value)} className="h-9 p-1" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">لون النص</Label>
-            <Input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="h-9 p-1" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs">نوع الخط</Label>
-            <select
-              value={fontFamily}
-              onChange={(e) => setFontFamily(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="sans-serif">Sans Serif</option>
-              <option value="serif">Serif</option>
-              <option value="'Amiri', serif">Amiri (عربي)</option>
-              <option value="'Cairo', sans-serif">Cairo (عربي)</option>
-              <option value="'Tajawal', sans-serif">Tajawal (عربي)</option>
-              <option value="monospace">Monospace</option>
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">حجم الخط ({fontSize})</Label>
-            <Input type="range" min={10} max={80} value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} />
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">النص الخاص بكل دعوة يُكتب من بطاقة الدعوة نفسها.</p>
-      </div>
+
 
       <Button type="submit" disabled={loading}>
         <Users className="size-4" /> {loading ? "جاري الحفظ..." : "حفظ"}
@@ -1750,7 +2016,9 @@ function DownloadAllButton({
       const inv = ordered[n - 1];
       if (!inv) continue;
       const dataUrl = await composeInvitationDataUrl(ev, inv, n, origin);
-      const filename = `invitation-${String(n).padStart(3, "0")}-${inv.code}.png`;
+      const filename = ev.number_in_filename
+        ? `invitation-${String(n).padStart(3, "0")}-${inv.code}.png`
+        : `invitation-${inv.code}.png`;
       files.push(blobToFile(dataUrlToBlob(dataUrl), filename));
       setProgress(Math.round(((n - startNum + 1) / (endNum - startNum + 1)) * 100));
     }
@@ -1912,5 +2180,210 @@ function DownloadAllButton({
     </Card>
   );
 }
+
+// ---------- Bulk captions editor ----------
+function BulkCaptionsButton({
+  eventId,
+  invitations,
+}: {
+  eventId: string;
+  invitations: Invitation[];
+}) {
+  const qc = useQueryClient();
+  const bulk = useServerFn(bulkUpdateCaptions);
+  const [open, setOpen] = useState(false);
+  // Order ascending by display_number to match user's expectation
+  const ordered = useMemo(
+    () =>
+      [...invitations].sort((a, b) => (a.display_number ?? 0) - (b.display_number ?? 0)),
+    [invitations],
+  );
+  const initialText = useMemo(
+    () =>
+      ordered
+        .map((i) => `#${i.display_number ?? "?"}\t${i.caption_text ?? ""}`)
+        .join("\n"),
+    [ordered],
+  );
+  const [text, setText] = useState(initialText);
+  const [saving, setSaving] = useState(false);
+
+  function openDialog() {
+    setText(initialText);
+    setOpen(true);
+  }
+
+  async function save() {
+    const lines = text.split("\n");
+    const byNumber = new Map<number, Invitation>();
+    for (const inv of ordered) if (inv.display_number != null) byNumber.set(inv.display_number, inv);
+    const entries: { id: string; caption_text: string | null }[] = [];
+    for (const line of lines) {
+      const m = line.match(/^\s*#?\s*(\d+)\s*[\t:،,-]*\s*(.*)$/);
+      if (!m) continue;
+      const num = Number(m[1]);
+      const inv = byNumber.get(num);
+      if (!inv) continue;
+      const captionText = m[2].trim() || null;
+      entries.push({ id: inv.id, caption_text: captionText });
+    }
+    if (entries.length === 0) {
+      toast.error("لم يتم التعرف على أي دعوة. استخدم التنسيق: #الرقم<TAB>النص");
+      return;
+    }
+    try {
+      setSaving(true);
+      await bulk({ data: { event_id: eventId, entries } });
+      toast.success(`تم تحديث ${entries.length} دعوة`);
+      qc.invalidateQueries({ queryKey: ["invitations", eventId] });
+      setOpen(false);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={openDialog}>
+        <Pencil className="size-4" /> تحرير نصوص كل الدعوات
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif">تحرير نصوص كل الدعوات دفعة واحدة</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              كل سطر: رقم الدعوة ثم النص. مثال: <span dir="ltr" className="font-mono">#1&nbsp;&nbsp;محمد الأحمد</span>
+            </p>
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={16}
+              className="font-mono text-sm"
+              dir="rtl"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>إلغاء</Button>
+            <Button onClick={save} disabled={saving}>
+              {saving ? "جاري الحفظ..." : "حفظ الكل"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ---------- Single invitation preview & edit ----------
+function InvitationPreviewDialog({
+  inv,
+  ev,
+  origin,
+  number,
+  open,
+  onOpenChange,
+  onSaveDetails,
+}: {
+  inv: Invitation;
+  ev: EventRow;
+  origin: string;
+  number: number;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSaveDetails: (v: { caption_text?: string; guest_name?: string }) => void;
+}) {
+  const [caption, setCaption] = useState(inv.caption_text || "");
+  const [name, setName] = useState(inv.guest_name || "");
+  const [dataUrl, setDataUrl] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
+  const previewInv: Invitation = { ...inv, caption_text: caption };
+
+  async function refresh() {
+    try {
+      setLoading(true);
+      const url = await composeInvitationDataUrl(ev, previewInv, number, origin);
+      setDataUrl(url);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Regenerate whenever dialog opens or caption changes
+  const key = `${open}|${caption}`;
+  const lastKey = useRef("");
+  if (open && lastKey.current !== key) {
+    lastKey.current = key;
+    refresh();
+  }
+  if (!open && lastKey.current !== "") lastKey.current = "";
+
+  async function download() {
+    if (!dataUrl) return;
+    const filename = ev.number_in_filename
+      ? `invitation-${String(number).padStart(3, "0")}-${inv.code}.png`
+      : `invitation-${inv.code}.png`;
+    triggerDownload(dataUrlToBlob(dataUrl), filename);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="font-serif">معاينة دعوة #{number}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-md border border-gold/20 bg-secondary/30 p-2 min-h-[240px] flex items-center justify-center">
+            {loading && !dataUrl ? (
+              <p className="text-xs text-muted-foreground">جاري التوليد...</p>
+            ) : dataUrl ? (
+              <img src={dataUrl} alt={`دعوة ${number}`} className="max-h-[60vh] w-auto" />
+            ) : (
+              <p className="text-xs text-muted-foreground">لا توجد معاينة</p>
+            )}
+          </div>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>اسم المدعو</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+            </div>
+            <div className="space-y-1">
+              <Label>النص الظاهر على الدعوة</Label>
+              <Textarea value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} maxLength={200} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => {
+                  onSaveDetails({
+                    caption_text: caption,
+                    guest_name: name,
+                  });
+                }}
+              >
+                حفظ
+              </Button>
+              <Button variant="outline" onClick={refresh} disabled={loading}>
+                تحديث المعاينة
+              </Button>
+              <Button variant="secondary" onClick={download} disabled={!dataUrl}>
+                <Download className="size-4" /> تنزيل
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              التصميم العام (الخط، الألوان، مواقع الباركود والنص) يُعدل من تبويب "صورة الدعوة".
+            </p>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 
 

@@ -145,6 +145,17 @@ export const upsertMyEvent = createServerFn({ method: "POST" })
         caption_number_color: z.string().trim().max(20).optional(),
         caption_font_family: z.string().trim().max(80).optional(),
         caption_font_size: z.number().int().min(10).max(120).optional(),
+        caption_x: z.number().min(0).max(100).optional(),
+        caption_y: z.number().min(0).max(100).optional(),
+        caption_show_box: z.boolean().optional(),
+        number_on_image: z.boolean().optional(),
+        number_in_filename: z.boolean().optional(),
+        qr_color: z.string().trim().max(20).optional(),
+        qr_bg_color: z.string().trim().max(20).optional(),
+        qr_ecc: z.enum(["L", "M", "Q", "H"]).optional(),
+        qr_margin: z.number().int().min(0).max(8).optional(),
+        caption_align: z.enum(["left", "center", "right"]).optional(),
+        caption_font_weight: z.number().int().min(100).max(900).optional(),
       })
       .parse(data),
   )
@@ -575,6 +586,46 @@ export const updateInvitationDetails = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+export const bulkUpdateCaptions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        event_id: z.string().uuid(),
+        entries: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              caption_text: z.string().trim().max(200).nullable(),
+            }),
+          )
+          .max(1000),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    // Must own the event
+    const { data: ev } = await supabase
+      .from("events")
+      .select("id")
+      .eq("id", data.event_id)
+      .eq("host_id", userId)
+      .maybeSingle();
+    if (!ev) throw new Error("لا تملك هذه المناسبة");
+    for (const entry of data.entries) {
+      const { error } = await supabase
+        .from("invitations")
+        .update({ caption_text: entry.caption_text || null })
+        .eq("id", entry.id)
+        .eq("event_id", data.event_id);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true, count: data.entries.length };
+  });
+
+
 
 
 export const deleteInvitation = createServerFn({ method: "POST" })
