@@ -587,6 +587,46 @@ export const updateInvitationDetails = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const bulkUpdateCaptions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        event_id: z.string().uuid(),
+        entries: z
+          .array(
+            z.object({
+              id: z.string().uuid(),
+              caption_text: z.string().trim().max(200).nullable(),
+            }),
+          )
+          .max(1000),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    // Must own the event
+    const { data: ev } = await supabase
+      .from("events")
+      .select("id")
+      .eq("id", data.event_id)
+      .eq("host_id", userId)
+      .maybeSingle();
+    if (!ev) throw new Error("لا تملك هذه المناسبة");
+    for (const entry of data.entries) {
+      const { error } = await supabase
+        .from("invitations")
+        .update({ caption_text: entry.caption_text || null })
+        .eq("id", entry.id)
+        .eq("event_id", data.event_id);
+      if (error) throw new Error(error.message);
+    }
+    return { ok: true, count: data.entries.length };
+  });
+
+
+
 
 export const deleteInvitation = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
