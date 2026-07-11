@@ -1510,11 +1510,6 @@ function EventForm({
         notes: (fd.get("notes") as string) || undefined,
         scan_date: (fd.get("scan_date") as string) || null,
         companions_enabled: companionsOn,
-        caption_show_number: showNumber,
-        caption_text_color: textColor,
-        caption_number_color: numberColor,
-        caption_font_family: fontFamily,
-        caption_font_size: fontSize,
       });
     }}>
       <div className="space-y-2">
