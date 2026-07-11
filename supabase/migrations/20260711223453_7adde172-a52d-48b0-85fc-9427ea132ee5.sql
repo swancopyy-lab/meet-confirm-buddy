@@ -1,0 +1,13 @@
+
+ALTER TABLE public.events
+  ADD COLUMN IF NOT EXISTS caption_x numeric NOT NULL DEFAULT 50,
+  ADD COLUMN IF NOT EXISTS caption_y numeric NOT NULL DEFAULT 92,
+  ADD COLUMN IF NOT EXISTS caption_show_box boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS number_on_image boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS number_in_filename boolean NOT NULL DEFAULT true,
+  ADD COLUMN IF NOT EXISTS qr_color text NOT NULL DEFAULT '#0F3D2E',
+  ADD COLUMN IF NOT EXISTS qr_bg_color text NOT NULL DEFAULT '#FFFFFF',
+  ADD COLUMN IF NOT EXISTS qr_ecc text NOT NULL DEFAULT 'M',
+  ADD COLUMN IF NOT EXISTS qr_margin integer NOT NULL DEFAULT 1,
+  ADD COLUMN IF NOT EXISTS caption_align text NOT NULL DEFAULT 'center',
+  ADD COLUMN IF NOT EXISTS caption_font_weight integer NOT NULL DEFAULT 600;
