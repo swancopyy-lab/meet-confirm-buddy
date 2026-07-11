@@ -1562,45 +1562,7 @@ function EventForm({
         </label>
       </div>
 
-      <div className="space-y-3 rounded-md border border-gold/30 bg-secondary/30 p-3">
-        <p className="font-serif text-sm font-semibold">التسمية أسفل الباركود</p>
-        <label className="flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={showNumber} onChange={(e) => setShowNumber(e.target.checked)} />
-          إظهار الرقم التلقائي لكل باركود
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs">لون الرقم</Label>
-            <Input type="color" value={numberColor} onChange={(e) => setNumberColor(e.target.value)} className="h-9 p-1" />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">لون النص</Label>
-            <Input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="h-9 p-1" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="space-y-1">
-            <Label className="text-xs">نوع الخط</Label>
-            <select
-              value={fontFamily}
-              onChange={(e) => setFontFamily(e.target.value)}
-              className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-            >
-              <option value="sans-serif">Sans Serif</option>
-              <option value="serif">Serif</option>
-              <option value="'Amiri', serif">Amiri (عربي)</option>
-              <option value="'Cairo', sans-serif">Cairo (عربي)</option>
-              <option value="'Tajawal', sans-serif">Tajawal (عربي)</option>
-              <option value="monospace">Monospace</option>
-            </select>
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs">حجم الخط ({fontSize})</Label>
-            <Input type="range" min={10} max={80} value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} />
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">النص الخاص بكل دعوة يُكتب من بطاقة الدعوة نفسها.</p>
-      </div>
+
 
       <Button type="submit" disabled={loading}>
         <Users className="size-4" /> {loading ? "جاري الحفظ..." : "حفظ"}
