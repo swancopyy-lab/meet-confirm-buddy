@@ -1304,6 +1304,7 @@ function InvitationCard({
   const [caption, setCaption] = useState(inv.caption_text || "");
   const [showWa, setShowWa] = useState(false);
   const [waMsg, setWaMsg] = useState("");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   function copy(url: string, label: string) {
     navigator.clipboard.writeText(url);
