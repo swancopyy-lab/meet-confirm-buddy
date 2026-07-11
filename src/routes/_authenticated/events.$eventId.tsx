@@ -1401,14 +1401,26 @@ function InvitationCard({
           )}
           <p className="font-mono text-xs tracking-widest text-muted-foreground">{number} · {inv.code}</p>
         </div>
-        <div className="grid grid-cols-2 gap-2 print:hidden">
+        <div className="grid grid-cols-3 gap-2 print:hidden">
           <Button variant="outline" size="sm" disabled={downloading} onClick={downloadCard}>
             <Download className="size-3.5" /> {downloading ? "..." : "تنزيل"}
           </Button>
           <Button variant="outline" size="sm" disabled={sharing} onClick={shareCard}>
             <Share2 className="size-3.5" /> {sharing ? "..." : "مشاركة"}
           </Button>
+          <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)}>
+            <Eye className="size-3.5" /> معاينة
+          </Button>
         </div>
+        <InvitationPreviewDialog
+          inv={inv}
+          ev={ev}
+          origin={origin}
+          number={number}
+          open={previewOpen}
+          onOpenChange={setPreviewOpen}
+          onSaveDetails={(v) => onSaveDetails(v)}
+        />
 
 
 
