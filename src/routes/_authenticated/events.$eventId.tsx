@@ -1480,11 +1480,6 @@ function EventForm({
     notes: string | null;
     scan_date?: string | null;
     companions_enabled?: boolean;
-    caption_show_number?: boolean;
-    caption_text_color?: string;
-    caption_number_color?: string;
-    caption_font_family?: string;
-    caption_font_size?: number;
   };
   onSubmit: (v: {
     title: string;
@@ -1496,20 +1491,10 @@ function EventForm({
     notes?: string;
     scan_date?: string | null;
     companions_enabled?: boolean;
-    caption_show_number?: boolean;
-    caption_text_color?: string;
-    caption_number_color?: string;
-    caption_font_family?: string;
-    caption_font_size?: number;
   }) => void;
   loading?: boolean;
 }) {
   const [companionsOn, setCompanionsOn] = useState<boolean>(initial?.companions_enabled ?? true);
-  const [showNumber, setShowNumber] = useState<boolean>(initial?.caption_show_number ?? false);
-  const [textColor, setTextColor] = useState<string>(initial?.caption_text_color || "#111111");
-  const [numberColor, setNumberColor] = useState<string>(initial?.caption_number_color || "#111111");
-  const [fontFamily, setFontFamily] = useState<string>(initial?.caption_font_family || "sans-serif");
-  const [fontSize, setFontSize] = useState<number>(initial?.caption_font_size ?? 28);
 
   return (
     <form className="space-y-4" onSubmit={(e) => {
