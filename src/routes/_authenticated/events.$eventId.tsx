@@ -511,11 +511,18 @@ async function composeInvitationDataUrl(
   origin: string,
 ): Promise<string> {
   const scanUrl = `${origin}/s/${inv.scan_code}`;
-  const showNumber = !!ev.caption_show_number;
+  const showNumber = !!ev.caption_show_number && !!ev.number_on_image;
+  const showBox = ev.caption_show_box !== false;
   const captionText = (inv.caption_text || "").trim();
   const numberColor = ev.caption_number_color || "#111111";
   const textColor = ev.caption_text_color || "#111111";
   const fontFamily = ev.caption_font_family || "sans-serif";
+  const align = (ev.caption_align || "center") as "left" | "center" | "right";
+  const weight = ev.caption_font_weight || 600;
+  const qrDark = ev.qr_color || "#0F3D2E";
+  const qrLight = ev.qr_bg_color || "#FFFFFF";
+  const qrEcc = (ev.qr_ecc || "M") as "L" | "M" | "Q" | "H";
+  const qrMargin = Number.isFinite(ev.qr_margin) ? ev.qr_margin : 1;
 
   // Fallback: no invitation image → export QR + label only
   if (!ev.invitation_image_url) {
@@ -529,8 +536,9 @@ async function composeInvitationDataUrl(
     const qrCanvas = document.createElement("canvas");
     await QRCode.toCanvas(qrCanvas, scanUrl, {
       width: size,
-      margin: 1,
-      color: { dark: "#0F3D2E", light: "#FFFFFF" },
+      margin: qrMargin,
+      errorCorrectionLevel: qrEcc,
+      color: { dark: qrDark, light: qrLight },
     });
     ctx.drawImage(qrCanvas, 0, 0, size, size);
     ctx.textAlign = "center";
@@ -543,7 +551,7 @@ async function composeInvitationDataUrl(
     }
     if (captionText) {
       ctx.fillStyle = textColor;
-      ctx.font = `600 48px ${fontFamily}`;
+      ctx.font = `${weight} 48px ${fontFamily}`;
       ctx.fillText(captionText, size / 2, y + 40);
     }
     return canvas.toDataURL("image/png");
@@ -570,44 +578,57 @@ async function composeInvitationDataUrl(
   const qrY = qrCy - qrSizePx / 2;
   const pad = qrSizePx * 0.06;
 
-  ctx.fillStyle = "#fff";
+  // Draw white plate behind QR only if bg not transparent-ish
+  ctx.fillStyle = qrLight;
   ctx.fillRect(qrX - pad, qrY - pad, qrSizePx + pad * 2, qrSizePx + pad * 2);
 
   const qrCanvas = document.createElement("canvas");
   await QRCode.toCanvas(qrCanvas, scanUrl, {
     width: Math.max(256, Math.round(qrSizePx)),
-    margin: 1,
-    color: { dark: "#0F3D2E", light: "#FFFFFF" },
+    margin: qrMargin,
+    errorCorrectionLevel: qrEcc,
+    color: { dark: qrDark, light: qrLight },
   });
   ctx.drawImage(qrCanvas, qrX, qrY, qrSizePx, qrSizePx);
 
-  // Caption(s) under the QR: optional number and optional custom text (no # prefix)
+  // Caption block positioned by caption_x / caption_y (percent of image)
   const numberFontSize = Math.max(14, Math.round(qrSizePx * ((ev.caption_font_size ?? 28) / 100)));
   const textFontSize = Math.max(14, Math.round(qrSizePx * ((ev.caption_font_size ?? 28) / 100) * 0.9));
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
-  let cursorY = qrY + qrSizePx + pad + 6;
-  if (showNumber) {
-    const label = String(number);
-    ctx.font = `bold ${numberFontSize}px ${fontFamily}`;
-    const labelW = ctx.measureText(label).width + 24;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(qrCx - labelW / 2, cursorY - 2, labelW, numberFontSize + 12);
-    ctx.fillStyle = numberColor;
-    ctx.fillText(label, qrCx, cursorY + 4);
-    cursorY += numberFontSize + 14;
-  }
-  if (captionText) {
-    ctx.font = `600 ${textFontSize}px ${fontFamily}`;
-    const textW = ctx.measureText(captionText).width + 24;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(qrCx - textW / 2, cursorY - 2, textW, textFontSize + 12);
-    ctx.fillStyle = textColor;
-    ctx.fillText(captionText, qrCx, cursorY + 4);
+  const capCx = (Number(ev.caption_x ?? 50) / 100) * w;
+  const capCy = (Number(ev.caption_y ?? 92) / 100) * h;
+  ctx.textAlign = align === "left" ? "left" : align === "right" ? "right" : "center";
+  ctx.textBaseline = "middle";
+
+  const lines: Array<{ text: string; color: string; size: number; weight: number | "bold" }> = [];
+  if (showNumber) lines.push({ text: String(number), color: numberColor, size: numberFontSize, weight: "bold" });
+  if (captionText) lines.push({ text: captionText, color: textColor, size: textFontSize, weight });
+
+  if (lines.length > 0) {
+    const gap = 8;
+    const totalH = lines.reduce((s, l) => s + l.size + gap, -gap);
+    let cy = capCy - totalH / 2 + lines[0].size / 2;
+    for (const l of lines) {
+      ctx.font = `${l.weight} ${l.size}px ${fontFamily}`;
+      if (showBox) {
+        const tw = ctx.measureText(l.text).width;
+        const padX = 12;
+        const padY = 6;
+        const boxW = tw + padX * 2;
+        const boxH = l.size + padY * 2;
+        const boxX = align === "left" ? capCx : align === "right" ? capCx - boxW : capCx - boxW / 2;
+        const boxY = cy - boxH / 2;
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+      }
+      ctx.fillStyle = l.color;
+      ctx.fillText(l.text, capCx, cy);
+      cy += l.size + gap;
+    }
   }
 
   return canvas.toDataURL("image/png");
 }
+
 
 function dataUrlToBlob(dataUrl: string): Blob {
   const [head, b64] = dataUrl.split(",");
