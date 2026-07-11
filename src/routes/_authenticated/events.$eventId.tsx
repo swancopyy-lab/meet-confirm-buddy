@@ -2168,4 +2168,209 @@ function DownloadAllButton({
   );
 }
 
+// ---------- Bulk captions editor ----------
+function BulkCaptionsButton({
+  eventId,
+  invitations,
+}: {
+  eventId: string;
+  invitations: Invitation[];
+}) {
+  const qc = useQueryClient();
+  const bulk = useServerFn(bulkUpdateCaptions);
+  const [open, setOpen] = useState(false);
+  // Order ascending by display_number to match user's expectation
+  const ordered = useMemo(
+    () =>
+      [...invitations].sort((a, b) => (a.display_number ?? 0) - (b.display_number ?? 0)),
+    [invitations],
+  );
+  const initialText = useMemo(
+    () =>
+      ordered
+        .map((i) => `#${i.display_number ?? "?"}\t${i.caption_text ?? ""}`)
+        .join("\n"),
+    [ordered],
+  );
+  const [text, setText] = useState(initialText);
+  const [saving, setSaving] = useState(false);
+
+  function openDialog() {
+    setText(initialText);
+    setOpen(true);
+  }
+
+  async function save() {
+    const lines = text.split("\n");
+    const byNumber = new Map<number, Invitation>();
+    for (const inv of ordered) if (inv.display_number != null) byNumber.set(inv.display_number, inv);
+    const entries: { id: string; caption_text: string | null }[] = [];
+    for (const line of lines) {
+      const m = line.match(/^\s*#?\s*(\d+)\s*[\t:،,-]*\s*(.*)$/);
+      if (!m) continue;
+      const num = Number(m[1]);
+      const inv = byNumber.get(num);
+      if (!inv) continue;
+      const captionText = m[2].trim() || null;
+      entries.push({ id: inv.id, caption_text: captionText });
+    }
+    if (entries.length === 0) {
+      toast.error("لم يتم التعرف على أي دعوة. استخدم التنسيق: #الرقم<TAB>النص");
+      return;
+    }
+    try {
+      setSaving(true);
+      await bulk({ data: { event_id: eventId, entries } });
+      toast.success(`تم تحديث ${entries.length} دعوة`);
+      qc.invalidateQueries({ queryKey: ["invitations", eventId] });
+      setOpen(false);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <>
+      <Button variant="outline" size="sm" onClick={openDialog}>
+        <Pencil className="size-4" /> تحرير نصوص كل الدعوات
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-serif">تحرير نصوص كل الدعوات دفعة واحدة</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              كل سطر: رقم الدعوة ثم النص. مثال: <span dir="ltr" className="font-mono">#1&nbsp;&nbsp;محمد الأحمد</span>
+            </p>
+            <Textarea
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              rows={16}
+              className="font-mono text-sm"
+              dir="rtl"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setOpen(false)}>إلغاء</Button>
+            <Button onClick={save} disabled={saving}>
+              {saving ? "جاري الحفظ..." : "حفظ الكل"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// ---------- Single invitation preview & edit ----------
+function InvitationPreviewDialog({
+  inv,
+  ev,
+  origin,
+  number,
+  open,
+  onOpenChange,
+  onSaveDetails,
+}: {
+  inv: Invitation;
+  ev: EventRow;
+  origin: string;
+  number: number;
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  onSaveDetails: (v: { caption_text?: string; guest_name?: string }) => void;
+}) {
+  const [caption, setCaption] = useState(inv.caption_text || "");
+  const [name, setName] = useState(inv.guest_name || "");
+  const [dataUrl, setDataUrl] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
+  const previewInv: Invitation = { ...inv, caption_text: caption };
+
+  async function refresh() {
+    try {
+      setLoading(true);
+      const url = await composeInvitationDataUrl(ev, previewInv, number, origin);
+      setDataUrl(url);
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Regenerate whenever dialog opens or caption changes
+  const key = `${open}|${caption}`;
+  const lastKey = useRef("");
+  if (open && lastKey.current !== key) {
+    lastKey.current = key;
+    refresh();
+  }
+  if (!open && lastKey.current !== "") lastKey.current = "";
+
+  async function download() {
+    if (!dataUrl) return;
+    const filename = ev.number_in_filename
+      ? `invitation-${String(number).padStart(3, "0")}-${inv.code}.png`
+      : `invitation-${inv.code}.png`;
+    triggerDownload(dataUrlToBlob(dataUrl), filename);
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-3xl">
+        <DialogHeader>
+          <DialogTitle className="font-serif">معاينة دعوة #{number}</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-md border border-gold/20 bg-secondary/30 p-2 min-h-[240px] flex items-center justify-center">
+            {loading && !dataUrl ? (
+              <p className="text-xs text-muted-foreground">جاري التوليد...</p>
+            ) : dataUrl ? (
+              <img src={dataUrl} alt={`دعوة ${number}`} className="max-h-[60vh] w-auto" />
+            ) : (
+              <p className="text-xs text-muted-foreground">لا توجد معاينة</p>
+            )}
+          </div>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label>اسم المدعو</Label>
+              <Input value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+            </div>
+            <div className="space-y-1">
+              <Label>النص الظاهر على الدعوة</Label>
+              <Textarea value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} maxLength={200} />
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                onClick={() => {
+                  onSaveDetails({
+                    caption_text: caption,
+                    guest_name: name,
+                  });
+                }}
+              >
+                حفظ
+              </Button>
+              <Button variant="outline" onClick={refresh} disabled={loading}>
+                تحديث المعاينة
+              </Button>
+              <Button variant="secondary" onClick={download} disabled={!dataUrl}>
+                <Download className="size-4" /> تنزيل
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              التصميم العام (الخط، الألوان، مواقع الباركود والنص) يُعدل من تبويب "صورة الدعوة".
+            </p>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
 
