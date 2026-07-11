@@ -308,10 +308,11 @@ function EventEditor() {
         {isHost && <TabsContent value="design">
           <InvitationDesigner
             ev={ev}
+            invitations={invitations}
             uploading={uploadMut.isPending}
             onUpload={(dataUrl) => uploadMut.mutate({ kind: "invitation", data_url: dataUrl })}
             onClear={() => clearMut.mutate("invitation")}
-            onSavePosition={(patch) => saveMut.mutate({ ...ev, ...patch })}
+            onSaveDesign={(patch) => saveMut.mutate({ ...ev, ...patch })}
             saving={saveMut.isPending}
           />
         </TabsContent>}
