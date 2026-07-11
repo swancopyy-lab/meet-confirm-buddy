@@ -87,6 +87,17 @@ type EventRow = {
   caption_number_color: string;
   caption_font_family: string;
   caption_font_size: number;
+  caption_x: number;
+  caption_y: number;
+  caption_show_box: boolean;
+  number_on_image: boolean;
+  number_in_filename: boolean;
+  qr_color: string;
+  qr_bg_color: string;
+  qr_ecc: "L" | "M" | "Q" | "H";
+  qr_margin: number;
+  caption_align: "left" | "center" | "right";
+  caption_font_weight: number;
 };
 
 type Invitation = {
