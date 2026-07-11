@@ -1784,7 +1784,9 @@ function DownloadAllButton({
       const inv = ordered[n - 1];
       if (!inv) continue;
       const dataUrl = await composeInvitationDataUrl(ev, inv, n, origin);
-      const filename = `invitation-${String(n).padStart(3, "0")}-${inv.code}.png`;
+      const filename = ev.number_in_filename
+        ? `invitation-${String(n).padStart(3, "0")}-${inv.code}.png`
+        : `invitation-${inv.code}.png`;
       files.push(blobToFile(dataUrlToBlob(dataUrl), filename));
       setProgress(Math.round(((n - startNum + 1) / (endNum - startNum + 1)) * 100));
     }
