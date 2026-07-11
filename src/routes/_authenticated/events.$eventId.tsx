@@ -1050,7 +1050,9 @@ function InvitationCard({
 
   const [downloading, setDownloading] = useState(false);
   const [sharing, setSharing] = useState(false);
-  const filename = `invitation-${String(number).padStart(3, "0")}-${inv.code}.png`;
+  const filename = ev.number_in_filename
+    ? `invitation-${String(number).padStart(3, "0")}-${inv.code}.png`
+    : `invitation-${inv.code}.png`;
 
   async function downloadCard() {
     try {
