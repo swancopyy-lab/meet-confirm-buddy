@@ -51,6 +51,8 @@ import {
   BookUser,
   Download,
   Share2,
+  Pencil,
+  Eye,
 } from "lucide-react";
 import { QRCard } from "@/components/QRCard";
 
