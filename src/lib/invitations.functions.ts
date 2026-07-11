@@ -145,6 +145,17 @@ export const upsertMyEvent = createServerFn({ method: "POST" })
         caption_number_color: z.string().trim().max(20).optional(),
         caption_font_family: z.string().trim().max(80).optional(),
         caption_font_size: z.number().int().min(10).max(120).optional(),
+        caption_x: z.number().min(0).max(100).optional(),
+        caption_y: z.number().min(0).max(100).optional(),
+        caption_show_box: z.boolean().optional(),
+        number_on_image: z.boolean().optional(),
+        number_in_filename: z.boolean().optional(),
+        qr_color: z.string().trim().max(20).optional(),
+        qr_bg_color: z.string().trim().max(20).optional(),
+        qr_ecc: z.enum(["L", "M", "Q", "H"]).optional(),
+        qr_margin: z.number().int().min(0).max(8).optional(),
+        caption_align: z.enum(["left", "center", "right"]).optional(),
+        caption_font_weight: z.number().int().min(100).max(900).optional(),
       })
       .parse(data),
   )
