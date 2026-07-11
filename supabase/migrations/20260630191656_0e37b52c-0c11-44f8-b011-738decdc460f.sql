@@ -1,0 +1,1 @@
+ALTER TABLE public.invitations ALTER COLUMN scan_code SET DEFAULT replace(gen_random_uuid()::text, '-', ''); ALTER TABLE public.invitations ALTER COLUMN code SET DEFAULT upper(substr(replace(gen_random_uuid()::text, '-', ''), 1, 10));
