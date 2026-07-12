@@ -1093,19 +1093,19 @@ function InvitationDesigner({
                 <img src={ev.invitation_image_url} alt="معاينة" className="block w-full h-auto" draggable={false} />
                 {/* QR overlay */}
                 <div
-                  onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging("qr"); }}
-                  className="absolute cursor-move"
-                  style={{ left: `${qrX}%`, top: `${qrY}%`, width: `${qrSize}%`, aspectRatio: "1 / 1", transform: "translate(-50%, -50%)" }}
+                  onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setDragging("qr"); }}
+                  className="absolute cursor-move select-none"
+                  style={{ left: `${qrX}%`, top: `${qrY}%`, width: `${qrSize}%`, aspectRatio: "1 / 1", transform: "translate(-50%, -50%)", touchAction: "none" }}
                 >
-                  <div className="w-full h-full ring-2 ring-gold/70 overflow-hidden" style={{ background: qrBgColor }}>
+                  <div className="w-full h-full ring-2 ring-gold/70 overflow-hidden pointer-events-none" style={{ background: qrBgColor }}>
                     {qrDataUrl && <img src={qrDataUrl} alt="qr" className="w-full h-full block" draggable={false} />}
                   </div>
                 </div>
                 {/* Caption overlay */}
                 {(showNumber || sampleText) && (
                   <div
-                    onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging("cap"); }}
-                    className="absolute cursor-move ring-1 ring-dashed ring-gold/50 px-2 py-1"
+                    onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setDragging("cap"); }}
+                    className="absolute cursor-move select-none ring-1 ring-dashed ring-gold/50 px-2 py-1"
                     style={{
                       left: `${capX}%`,
                       top: `${capY}%`,
@@ -1114,6 +1114,7 @@ function InvitationDesigner({
                       fontFamily,
                       minWidth: "40px",
                       background: showBox ? "rgba(255,255,255,0.85)" : "transparent",
+                      touchAction: "none",
                     }}
                   >
                     {showNumber && (
@@ -1223,13 +1224,21 @@ function InvitationDesigner({
             <div>
               <Label className="text-xs">الخط</Label>
               <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm">
-                <option value="sans-serif">Sans Serif</option>
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                style={{ fontFamily }}>
+                <option value="sans-serif">افتراضي</option>
                 <option value="serif">Serif</option>
-                <option value="'Amiri', serif">Amiri (عربي)</option>
-                <option value="'Cairo', sans-serif">Cairo (عربي)</option>
-                <option value="'Tajawal', sans-serif">Tajawal (عربي)</option>
                 <option value="monospace">Monospace</option>
+                <option value="'Cairo', sans-serif" style={{ fontFamily: "'Cairo', sans-serif" }}>Cairo — القاهرة</option>
+                <option value="'Tajawal', sans-serif" style={{ fontFamily: "'Tajawal', sans-serif" }}>Tajawal — تجوّل</option>
+                <option value="'Almarai', sans-serif" style={{ fontFamily: "'Almarai', sans-serif" }}>Almarai — المراعي</option>
+                <option value="'Reem Kufi', sans-serif" style={{ fontFamily: "'Reem Kufi', sans-serif" }}>Reem Kufi — ريم كوفي</option>
+                <option value="'El Messiri', sans-serif" style={{ fontFamily: "'El Messiri', sans-serif" }}>El Messiri — المسيري</option>
+                <option value="'Markazi Text', serif" style={{ fontFamily: "'Markazi Text', serif" }}>Markazi — مركزي</option>
+                <option value="'Amiri', serif" style={{ fontFamily: "'Amiri', serif" }}>Amiri — أميري</option>
+                <option value="'Scheherazade New', serif" style={{ fontFamily: "'Scheherazade New', serif" }}>Scheherazade — شهرزاد</option>
+                <option value="'Aref Ruqaa', serif" style={{ fontFamily: "'Aref Ruqaa', serif" }}>Aref Ruqaa — عارف رقعة</option>
+                <option value="'Lateef', serif" style={{ fontFamily: "'Lateef', serif" }}>Lateef — لطيف</option>
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
@@ -2201,7 +2210,7 @@ function BulkCaptionsButton({
   const initialText = useMemo(
     () =>
       ordered
-        .map((i) => `#${i.display_number ?? "?"}\t${i.caption_text ?? ""}`)
+        .map((i) => `#${i.display_number ?? "?"} ${i.caption_text ?? ""}`.trimEnd())
         .join("\n"),
     [ordered],
   );
@@ -2219,7 +2228,8 @@ function BulkCaptionsButton({
     for (const inv of ordered) if (inv.display_number != null) byNumber.set(inv.display_number, inv);
     const entries: { id: string; caption_text: string | null }[] = [];
     for (const line of lines) {
-      const m = line.match(/^\s*#?\s*(\d+)\s*[\t:،,-]*\s*(.*)$/);
+      // Accepts: "#1 name", "#1name", "1 name", "1) name", "#1: name", "#1 - name" ...
+      const m = line.match(/^\s*#?\s*(\d+)\s*[\t:،,.\-)\]|]*\s*(.*)$/);
       if (!m) continue;
       const num = Number(m[1]);
       const inv = byNumber.get(num);
@@ -2228,7 +2238,7 @@ function BulkCaptionsButton({
       entries.push({ id: inv.id, caption_text: captionText });
     }
     if (entries.length === 0) {
-      toast.error("لم يتم التعرف على أي دعوة. استخدم التنسيق: #الرقم<TAB>النص");
+      toast.error("لم يتم التعرف على أي دعوة. اكتب كل سطر بالشكل: #الرقم النص");
       return;
     }
     try {
@@ -2256,7 +2266,7 @@ function BulkCaptionsButton({
           </DialogHeader>
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              كل سطر: رقم الدعوة ثم النص. مثال: <span dir="ltr" className="font-mono">#1&nbsp;&nbsp;محمد الأحمد</span>
+              كل سطر يبدأ بـ <span dir="ltr" className="font-mono">#رقم_الدعوة</span> ثم النص. مثال: <span dir="ltr" className="font-mono">#1 محمد الأحمد</span>
             </p>
             <Textarea
               value={text}

@@ -131,6 +131,13 @@ function InvitePage() {
     caption_text_color?: string | null;
     caption_number_color?: string | null;
     caption_font_family?: string | null;
+    caption_x?: number | null;
+    caption_y?: number | null;
+    caption_show_box?: boolean;
+    caption_font_size?: number | null;
+    caption_font_weight?: number | null;
+    caption_align?: "left" | "center" | "right" | null;
+    number_on_image?: boolean;
   }) | undefined;
   const inv2 = inv as typeof inv & { caption_text?: string | null; display_number?: number | null };
   const venueMap = ev2?.venue_map_url;
@@ -141,6 +148,14 @@ function InvitePage() {
   const captionFont = ev2?.caption_font_family || undefined;
   const numberColor = ev2?.caption_number_color || undefined;
   const textColor = ev2?.caption_text_color || undefined;
+  const capX = Number(ev2?.caption_x ?? 50);
+  const capY = Number(ev2?.caption_y ?? 92);
+  const capShowBox = ev2?.caption_show_box !== false;
+  const capFontSize = Number(ev2?.caption_font_size ?? 28);
+  const capFontWeight = Number(ev2?.caption_font_weight ?? 600);
+  const capAlign = (ev2?.caption_align || "center") as "left" | "center" | "right";
+  const capTransform =
+    capAlign === "left" ? "translate(0, -50%)" : capAlign === "right" ? "translate(-100%, -50%)" : "translate(-50%, -50%)";
 
   async function downloadShare(share: boolean) {
     try {
@@ -211,27 +226,62 @@ function InvitePage() {
             <QRCard url={scanUrl} size={512} />
           </div>
         </div>
+        {(showNumber || captionText) && (
+          <div
+            className="absolute px-2 py-1 leading-tight"
+            style={{
+              left: `${capX}%`,
+              top: `${capY}%`,
+              transform: capTransform,
+              textAlign: capAlign,
+              fontFamily: captionFont,
+              background: capShowBox ? "rgba(255,255,255,0.88)" : "transparent",
+              borderRadius: capShowBox ? 6 : 0,
+              maxWidth: "80%",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {showNumber && displayNumber != null && (
+              <div
+                style={{
+                  color: numberColor || "#111",
+                  fontSize: `${Math.max(12, capFontSize * 0.5)}px`,
+                  fontWeight: 700,
+                }}
+              >
+                {displayNumber}
+              </div>
+            )}
+            {captionText && (
+              <div
+                style={{
+                  color: textColor || "#111",
+                  fontSize: `${Math.max(11, capFontSize * 0.42)}px`,
+                  fontWeight: capFontWeight,
+                }}
+              >
+                {captionText}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      <CardContent className="text-center py-3 space-y-2">
-        {showNumber && displayNumber && (
-          <p className="font-bold text-lg" style={{ color: numberColor, fontFamily: captionFont }}>{displayNumber}</p>
-        )}
-        {captionText && (
-          <p className="text-sm" style={{ color: textColor, fontFamily: captionFont }}>{captionText}</p>
-        )}
-        {inv.guest_name && (
-          <p className="text-sm text-muted-foreground">
-            المدعو:{" "}
-            <span className="font-semibold text-foreground">{inv.guest_name}</span>
-          </p>
-        )}
-        {venueMap && (
-          <a href={venueMap} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-4">
-            <MapPin className="size-4" /> فتح موقع القاعة على الخريطة
-          </a>
-        )}
-      </CardContent>
+      {(inv.guest_name || venueMap) && (
+        <CardContent className="text-center py-3 space-y-2">
+          {inv.guest_name && (
+            <p className="text-sm text-muted-foreground">
+              المدعو:{" "}
+              <span className="font-semibold text-foreground">{inv.guest_name}</span>
+            </p>
+          )}
+          {venueMap && (
+            <a href={venueMap} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-4">
+              <MapPin className="size-4" /> فتح موقع القاعة على الخريطة
+            </a>
+          )}
+        </CardContent>
+      )}
     </Card>
   ) : (
     <Card className="overflow-hidden border-gold/40 shadow-2xl shadow-primary/10">
