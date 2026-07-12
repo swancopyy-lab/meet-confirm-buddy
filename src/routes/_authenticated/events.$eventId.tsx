@@ -2266,7 +2266,7 @@ function BulkCaptionsButton({
           </DialogHeader>
           <div className="space-y-2">
             <p className="text-xs text-muted-foreground">
-              كل سطر: رقم الدعوة ثم النص. مثال: <span dir="ltr" className="font-mono">#1&nbsp;&nbsp;محمد الأحمد</span>
+              كل سطر يبدأ بـ <span dir="ltr" className="font-mono">#رقم_الدعوة</span> ثم النص. مثال: <span dir="ltr" className="font-mono">#1 محمد الأحمد</span>
             </p>
             <Textarea
               value={text}
