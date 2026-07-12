@@ -1093,19 +1093,19 @@ function InvitationDesigner({
                 <img src={ev.invitation_image_url} alt="معاينة" className="block w-full h-auto" draggable={false} />
                 {/* QR overlay */}
                 <div
-                  onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging("qr"); }}
-                  className="absolute cursor-move"
-                  style={{ left: `${qrX}%`, top: `${qrY}%`, width: `${qrSize}%`, aspectRatio: "1 / 1", transform: "translate(-50%, -50%)" }}
+                  onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setDragging("qr"); }}
+                  className="absolute cursor-move select-none"
+                  style={{ left: `${qrX}%`, top: `${qrY}%`, width: `${qrSize}%`, aspectRatio: "1 / 1", transform: "translate(-50%, -50%)", touchAction: "none" }}
                 >
-                  <div className="w-full h-full ring-2 ring-gold/70 overflow-hidden" style={{ background: qrBgColor }}>
+                  <div className="w-full h-full ring-2 ring-gold/70 overflow-hidden pointer-events-none" style={{ background: qrBgColor }}>
                     {qrDataUrl && <img src={qrDataUrl} alt="qr" className="w-full h-full block" draggable={false} />}
                   </div>
                 </div>
                 {/* Caption overlay */}
                 {(showNumber || sampleText) && (
                   <div
-                    onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); setDragging("cap"); }}
-                    className="absolute cursor-move ring-1 ring-dashed ring-gold/50 px-2 py-1"
+                    onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setDragging("cap"); }}
+                    className="absolute cursor-move select-none ring-1 ring-dashed ring-gold/50 px-2 py-1"
                     style={{
                       left: `${capX}%`,
                       top: `${capY}%`,
@@ -1114,6 +1114,7 @@ function InvitationDesigner({
                       fontFamily,
                       minWidth: "40px",
                       background: showBox ? "rgba(255,255,255,0.85)" : "transparent",
+                      touchAction: "none",
                     }}
                   >
                     {showNumber && (
