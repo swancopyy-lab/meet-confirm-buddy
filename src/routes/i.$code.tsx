@@ -131,6 +131,13 @@ function InvitePage() {
     caption_text_color?: string | null;
     caption_number_color?: string | null;
     caption_font_family?: string | null;
+    caption_x?: number | null;
+    caption_y?: number | null;
+    caption_show_box?: boolean;
+    caption_font_size?: number | null;
+    caption_font_weight?: number | null;
+    caption_align?: "left" | "center" | "right" | null;
+    number_on_image?: boolean;
   }) | undefined;
   const inv2 = inv as typeof inv & { caption_text?: string | null; display_number?: number | null };
   const venueMap = ev2?.venue_map_url;
@@ -141,6 +148,14 @@ function InvitePage() {
   const captionFont = ev2?.caption_font_family || undefined;
   const numberColor = ev2?.caption_number_color || undefined;
   const textColor = ev2?.caption_text_color || undefined;
+  const capX = Number(ev2?.caption_x ?? 50);
+  const capY = Number(ev2?.caption_y ?? 92);
+  const capShowBox = ev2?.caption_show_box !== false;
+  const capFontSize = Number(ev2?.caption_font_size ?? 28);
+  const capFontWeight = Number(ev2?.caption_font_weight ?? 600);
+  const capAlign = (ev2?.caption_align || "center") as "left" | "center" | "right";
+  const capTransform =
+    capAlign === "left" ? "translate(0, -50%)" : capAlign === "right" ? "translate(-100%, -50%)" : "translate(-50%, -50%)";
 
   async function downloadShare(share: boolean) {
     try {
