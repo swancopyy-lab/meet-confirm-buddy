@@ -226,27 +226,62 @@ function InvitePage() {
             <QRCard url={scanUrl} size={512} />
           </div>
         </div>
+        {(showNumber || captionText) && (
+          <div
+            className="absolute px-2 py-1 leading-tight"
+            style={{
+              left: `${capX}%`,
+              top: `${capY}%`,
+              transform: capTransform,
+              textAlign: capAlign,
+              fontFamily: captionFont,
+              background: capShowBox ? "rgba(255,255,255,0.88)" : "transparent",
+              borderRadius: capShowBox ? 6 : 0,
+              maxWidth: "80%",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {showNumber && displayNumber != null && (
+              <div
+                style={{
+                  color: numberColor || "#111",
+                  fontSize: `${Math.max(12, capFontSize * 0.5)}px`,
+                  fontWeight: 700,
+                }}
+              >
+                {displayNumber}
+              </div>
+            )}
+            {captionText && (
+              <div
+                style={{
+                  color: textColor || "#111",
+                  fontSize: `${Math.max(11, capFontSize * 0.42)}px`,
+                  fontWeight: capFontWeight,
+                }}
+              >
+                {captionText}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      <CardContent className="text-center py-3 space-y-2">
-        {showNumber && displayNumber && (
-          <p className="font-bold text-lg" style={{ color: numberColor, fontFamily: captionFont }}>{displayNumber}</p>
-        )}
-        {captionText && (
-          <p className="text-sm" style={{ color: textColor, fontFamily: captionFont }}>{captionText}</p>
-        )}
-        {inv.guest_name && (
-          <p className="text-sm text-muted-foreground">
-            المدعو:{" "}
-            <span className="font-semibold text-foreground">{inv.guest_name}</span>
-          </p>
-        )}
-        {venueMap && (
-          <a href={venueMap} target="_blank" rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-4">
-            <MapPin className="size-4" /> فتح موقع القاعة على الخريطة
-          </a>
-        )}
-      </CardContent>
+      {(inv.guest_name || venueMap) && (
+        <CardContent className="text-center py-3 space-y-2">
+          {inv.guest_name && (
+            <p className="text-sm text-muted-foreground">
+              المدعو:{" "}
+              <span className="font-semibold text-foreground">{inv.guest_name}</span>
+            </p>
+          )}
+          {venueMap && (
+            <a href={venueMap} target="_blank" rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-4">
+              <MapPin className="size-4" /> فتح موقع القاعة على الخريطة
+            </a>
+          )}
+        </CardContent>
+      )}
     </Card>
   ) : (
     <Card className="overflow-hidden border-gold/40 shadow-2xl shadow-primary/10">
