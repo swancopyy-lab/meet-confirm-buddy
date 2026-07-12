@@ -2210,7 +2210,7 @@ function BulkCaptionsButton({
   const initialText = useMemo(
     () =>
       ordered
-        .map((i) => `#${i.display_number ?? "?"}\t${i.caption_text ?? ""}`)
+        .map((i) => `#${i.display_number ?? "?"} ${i.caption_text ?? ""}`.trimEnd())
         .join("\n"),
     [ordered],
   );
@@ -2228,7 +2228,8 @@ function BulkCaptionsButton({
     for (const inv of ordered) if (inv.display_number != null) byNumber.set(inv.display_number, inv);
     const entries: { id: string; caption_text: string | null }[] = [];
     for (const line of lines) {
-      const m = line.match(/^\s*#?\s*(\d+)\s*[\t:،,-]*\s*(.*)$/);
+      // Accepts: "#1 name", "#1name", "1 name", "1) name", "#1: name", "#1 - name" ...
+      const m = line.match(/^\s*#?\s*(\d+)\s*[\t:،,.\-)\]|]*\s*(.*)$/);
       if (!m) continue;
       const num = Number(m[1]);
       const inv = byNumber.get(num);
@@ -2237,7 +2238,7 @@ function BulkCaptionsButton({
       entries.push({ id: inv.id, caption_text: captionText });
     }
     if (entries.length === 0) {
-      toast.error("لم يتم التعرف على أي دعوة. استخدم التنسيق: #الرقم<TAB>النص");
+      toast.error("لم يتم التعرف على أي دعوة. اكتب كل سطر بالشكل: #الرقم النص");
       return;
     }
     try {
