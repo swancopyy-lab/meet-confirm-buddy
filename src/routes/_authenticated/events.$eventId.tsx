@@ -1223,13 +1223,21 @@ function InvitationDesigner({
             <div>
               <Label className="text-xs">الخط</Label>
               <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}
-                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm">
-                <option value="sans-serif">Sans Serif</option>
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm"
+                style={{ fontFamily }}>
+                <option value="sans-serif">افتراضي</option>
                 <option value="serif">Serif</option>
-                <option value="'Amiri', serif">Amiri (عربي)</option>
-                <option value="'Cairo', sans-serif">Cairo (عربي)</option>
-                <option value="'Tajawal', sans-serif">Tajawal (عربي)</option>
                 <option value="monospace">Monospace</option>
+                <option value="'Cairo', sans-serif" style={{ fontFamily: "'Cairo', sans-serif" }}>Cairo — القاهرة</option>
+                <option value="'Tajawal', sans-serif" style={{ fontFamily: "'Tajawal', sans-serif" }}>Tajawal — تجوّل</option>
+                <option value="'Almarai', sans-serif" style={{ fontFamily: "'Almarai', sans-serif" }}>Almarai — المراعي</option>
+                <option value="'Reem Kufi', sans-serif" style={{ fontFamily: "'Reem Kufi', sans-serif" }}>Reem Kufi — ريم كوفي</option>
+                <option value="'El Messiri', sans-serif" style={{ fontFamily: "'El Messiri', sans-serif" }}>El Messiri — المسيري</option>
+                <option value="'Markazi Text', serif" style={{ fontFamily: "'Markazi Text', serif" }}>Markazi — مركزي</option>
+                <option value="'Amiri', serif" style={{ fontFamily: "'Amiri', serif" }}>Amiri — أميري</option>
+                <option value="'Scheherazade New', serif" style={{ fontFamily: "'Scheherazade New', serif" }}>Scheherazade — شهرزاد</option>
+                <option value="'Aref Ruqaa', serif" style={{ fontFamily: "'Aref Ruqaa', serif" }}>Aref Ruqaa — عارف رقعة</option>
+                <option value="'Lateef', serif" style={{ fontFamily: "'Lateef', serif" }}>Lateef — لطيف</option>
               </select>
             </div>
             <div className="grid grid-cols-2 gap-2">
