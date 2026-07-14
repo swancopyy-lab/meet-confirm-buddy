@@ -139,7 +139,7 @@ function InvitePage() {
     caption_align?: "left" | "center" | "right" | null;
     number_on_image?: boolean;
   }) | undefined;
-  const inv2 = inv as typeof inv & { caption_text?: string | null; display_number?: number | null };
+  const inv2 = inv as typeof inv & { caption_text?: string | null; display_number?: number | null; invitation_image_url?: string | null };
   const venueMap = ev2?.venue_map_url;
   const companionsEnabled = ev2?.companions_enabled ?? true;
   const showNumber = ev2?.caption_show_number ?? false;
@@ -156,6 +156,10 @@ function InvitePage() {
   const capAlign = (ev2?.caption_align || "center") as "left" | "center" | "right";
   const capTransform =
     capAlign === "left" ? "translate(0, -50%)" : capAlign === "right" ? "translate(-100%, -50%)" : "translate(-50%, -50%)";
+  const invitationImage = inv2.invitation_image_url || event?.invitation_image_url || null;
+  // Size fonts relative to the invitation image container (matches designer canvas sizing)
+  const numberFontCqw = Math.max(1.6, (qrSize * capFontSize) / 100);
+  const textFontCqw = Math.max(1.4, (qrSize * capFontSize * 0.9) / 100);
 
   async function downloadShare(share: boolean) {
     try {
