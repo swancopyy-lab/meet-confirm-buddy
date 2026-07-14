@@ -6,6 +6,7 @@ import {
   addCollaborator,
   bulkUpdateCaptions,
   clearEventImage,
+  clearInvitationImage,
   createCollaboratorAccount,
   createInvitations,
   deleteInvitation,
@@ -16,6 +17,7 @@ import {
   updateCollaboratorPermissions,
   updateInvitationDetails,
   uploadEventImage,
+  uploadInvitationImage,
   upsertMyEvent,
 } from "@/lib/invitations.functions";
 
