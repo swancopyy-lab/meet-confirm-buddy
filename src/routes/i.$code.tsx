@@ -249,8 +249,9 @@ function InvitePage() {
               <div
                 style={{
                   color: numberColor || "#111",
-                  fontSize: `${Math.max(12, capFontSize * 0.5)}px`,
+                  fontSize: `${numberFontCqw}cqw`,
                   fontWeight: 700,
+                  lineHeight: 1.1,
                 }}
               >
                 {displayNumber}
@@ -260,8 +261,9 @@ function InvitePage() {
               <div
                 style={{
                   color: textColor || "#111",
-                  fontSize: `${Math.max(11, capFontSize * 0.42)}px`,
+                  fontSize: `${textFontCqw}cqw`,
                   fontWeight: capFontWeight,
+                  lineHeight: 1.15,
                 }}
               >
                 {captionText}
