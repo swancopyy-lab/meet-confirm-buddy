@@ -117,6 +117,7 @@ type Invitation = {
   responded_at: string | null;
   caption_text: string | null;
   display_number: number | null;
+  invitation_image_url: string | null;
 };
 
 function EventEditor() {
