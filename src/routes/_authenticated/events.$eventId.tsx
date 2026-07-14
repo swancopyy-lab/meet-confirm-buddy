@@ -2310,12 +2310,18 @@ function InvitationPreviewDialog({
   onOpenChange: (v: boolean) => void;
   onSaveDetails: (v: { caption_text?: string; guest_name?: string }) => void;
 }) {
+  const qc = useQueryClient();
+  const uploadInvImg = useServerFn(uploadInvitationImage);
+  const clearInvImg = useServerFn(clearInvitationImage);
+  const fileRef = useRef<HTMLInputElement>(null);
   const [caption, setCaption] = useState(inv.caption_text || "");
   const [name, setName] = useState(inv.guest_name || "");
+  const [imageUrl, setImageUrl] = useState<string | null>(inv.invitation_image_url);
   const [dataUrl, setDataUrl] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
-  const previewInv: Invitation = { ...inv, caption_text: caption };
+  const previewInv: Invitation = { ...inv, caption_text: caption, invitation_image_url: imageUrl };
 
   async function refresh() {
     try {
@@ -2329,14 +2335,53 @@ function InvitationPreviewDialog({
     }
   }
 
-  // Regenerate whenever dialog opens or caption changes
-  const key = `${open}|${caption}`;
+  // Regenerate whenever dialog opens or caption/image changes
+  const key = `${open}|${caption}|${imageUrl || ""}`;
   const lastKey = useRef("");
   if (open && lastKey.current !== key) {
     lastKey.current = key;
     refresh();
   }
   if (!open && lastKey.current !== "") lastKey.current = "";
+
+  async function onFile(file: File) {
+    if (!file.type.startsWith("image/")) {
+      toast.error("الرجاء اختيار ملف صورة");
+      return;
+    }
+    if (file.size > 8_000_000) {
+      toast.error("الملف كبير جداً (الحد 8 ميغابايت)");
+      return;
+    }
+    setUploading(true);
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(new Error("تعذّرت قراءة الملف"));
+        r.readAsDataURL(file);
+      });
+      const res = await uploadInvImg({ data: { invitation_id: inv.id, data_url: dataUrl } });
+      setImageUrl(res.url);
+      qc.invalidateQueries({ queryKey: ["invitations", ev.id] });
+      toast.success("تم رفع الصورة الخاصة بهذه الدعوة");
+    } catch (e) {
+      toast.error((e as Error).message || "فشل الرفع");
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  async function clearImage() {
+    try {
+      await clearInvImg({ data: { invitation_id: inv.id } });
+      setImageUrl(null);
+      qc.invalidateQueries({ queryKey: ["invitations", ev.id] });
+      toast.success("تم حذف الصورة الخاصة");
+    } catch (e) {
+      toast.error((e as Error).message || "فشلت العملية");
+    }
+  }
 
   async function download() {
     if (!dataUrl) return;
@@ -2370,6 +2415,40 @@ function InvitationPreviewDialog({
             <div className="space-y-1">
               <Label>النص الظاهر على الدعوة</Label>
               <Textarea value={caption} onChange={(e) => setCaption(e.target.value)} rows={3} maxLength={200} />
+            </div>
+            <div className="space-y-2 rounded-md border border-gold/20 bg-secondary/20 p-3">
+              <Label className="text-xs">صورة دعوة خاصة (اختياري)</Label>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                إذا رفعت صورة هنا سيتم استخدامها لهذه الدعوة فقط بدلاً من صورة المناسبة العامة، مع الاحتفاظ بنفس إعدادات الخط والألوان ومواقع الباركود والنص.
+              </p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) onFile(f);
+                  e.target.value = "";
+                }}
+              />
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploading}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  <Upload className="size-3.5" />
+                  {uploading ? "جاري الرفع..." : imageUrl ? "تغيير الصورة" : "رفع صورة خاصة"}
+                </Button>
+                {imageUrl && (
+                  <Button type="button" variant="ghost" size="sm" onClick={clearImage}>
+                    <Trash2 className="size-3.5" /> إزالة الخاصة
+                  </Button>
+                )}
+              </div>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button
