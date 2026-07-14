@@ -534,8 +534,9 @@ async function composeInvitationDataUrl(
   const qrEcc = (ev.qr_ecc || "M") as "L" | "M" | "Q" | "H";
   const qrMargin = Number.isFinite(ev.qr_margin) ? ev.qr_margin : 1;
 
+  const imageUrl = inv.invitation_image_url || ev.invitation_image_url;
   // Fallback: no invitation image → export QR + label only
-  if (!ev.invitation_image_url) {
+  if (!imageUrl) {
     const canvas = document.createElement("canvas");
     const size = 900;
     canvas.width = size;
@@ -571,7 +572,7 @@ async function composeInvitationDataUrl(
   await new Promise<void>((resolve, reject) => {
     img.onload = () => resolve();
     img.onerror = () => reject(new Error("تعذّر تحميل صورة الدعوة"));
-    img.src = ev.invitation_image_url as string;
+    img.src = imageUrl as string;
   });
   const w = img.naturalWidth;
   const h = img.naturalHeight;
