@@ -208,11 +208,11 @@ function InvitePage() {
     }
   }
 
-  const invitationBlock = event?.invitation_image_url ? (
+  const invitationBlock = invitationImage ? (
     <Card className="overflow-hidden border-gold/40 shadow-2xl shadow-primary/10">
-      <div className="relative w-full">
+      <div className="relative w-full" style={{ containerType: "inline-size" }}>
         <img
-          src={event.invitation_image_url}
+          src={invitationImage}
           alt="دعوة"
           className="block w-full h-auto"
         />
