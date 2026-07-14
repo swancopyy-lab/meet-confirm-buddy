@@ -178,6 +178,7 @@ export type Database = {
           guest_name: string | null
           host_id: string
           id: string
+          invitation_image_url: string | null
           phone: string | null
           responded_at: string | null
           rsvp_status: Database["public"]["Enums"]["rsvp_status"]
@@ -196,6 +197,7 @@ export type Database = {
           guest_name?: string | null
           host_id: string
           id?: string
+          invitation_image_url?: string | null
           phone?: string | null
           responded_at?: string | null
           rsvp_status?: Database["public"]["Enums"]["rsvp_status"]
@@ -214,6 +216,7 @@ export type Database = {
           guest_name?: string | null
           host_id?: string
           id?: string
+          invitation_image_url?: string | null
           phone?: string | null
           responded_at?: string | null
           rsvp_status?: Database["public"]["Enums"]["rsvp_status"]

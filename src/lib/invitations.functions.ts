@@ -625,6 +625,97 @@ export const bulkUpdateCaptions = createServerFn({ method: "POST" })
     return { ok: true, count: data.entries.length };
   });
 
+async function assertCanEditInvitation(
+  supabase: {
+    from: (t: string) => {
+      select: (c: string) => {
+        eq: (k: string, v: string) => {
+          maybeSingle: () => Promise<{ data: { id: string; host_id: string; event_id: string } | null; error: { message: string } | null }>;
+        };
+      };
+    };
+  },
+  invitationId: string,
+  userId: string,
+  claims: unknown,
+): Promise<{ id: string; event_id: string; host_id: string }> {
+  const { data: inv, error } = await supabase
+    .from("invitations")
+    .select("id, host_id, event_id")
+    .eq("id", invitationId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!inv) throw new Error("لم يتم العثور على الدعوة");
+  if (inv.host_id === userId) return inv;
+  const email = (claims as { email?: string } | null)?.email?.toLowerCase();
+  if (email) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s = supabase as any;
+    const { data: collab } = await s
+      .from("event_collaborators")
+      .select("can_send_invitations")
+      .eq("event_id", inv.event_id)
+      .eq("email", email)
+      .maybeSingle();
+    if (collab?.can_send_invitations) return inv;
+  }
+  throw new Error("لا تملك صلاحية التعديل");
+}
+
+export const uploadInvitationImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        invitation_id: z.string().uuid(),
+        data_url: z.string().max(8_000_000),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId, claims } = context;
+    const inv = await assertCanEditInvitation(supabase as never, data.invitation_id, userId, claims);
+    const m = data.data_url.match(/^data:(image\/[a-zA-Z+]+);base64,(.+)$/);
+    if (!m) throw new Error("صيغة الصورة غير صحيحة");
+    const mime = m[1];
+    const ext = mime.split("/")[1].replace("jpeg", "jpg");
+    const bin = Uint8Array.from(atob(m[2]), (c) => c.charCodeAt(0));
+    const path = `${inv.host_id}/${inv.event_id}/invitations/${inv.id}-${Date.now()}.${ext}`;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error: upErr } = await supabaseAdmin.storage
+      .from("event-images")
+      .upload(path, bin, { contentType: mime, upsert: true });
+    if (upErr) throw new Error(upErr.message);
+    const { data: signed, error: sErr } = await supabaseAdmin.storage
+      .from("event-images")
+      .createSignedUrl(path, SIGNED_URL_TTL);
+    if (sErr || !signed) throw new Error(sErr?.message || "تعذّر إنشاء الرابط");
+    const { error: uErr } = await supabase
+      .from("invitations")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update({ invitation_image_url: signed.signedUrl } as any)
+      .eq("id", inv.id);
+    if (uErr) throw new Error(uErr.message);
+    return { url: signed.signedUrl };
+  });
+
+export const clearInvitationImage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => z.object({ invitation_id: z.string().uuid() }).parse(data))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId, claims } = context;
+    const inv = await assertCanEditInvitation(supabase as never, data.invitation_id, userId, claims);
+    const { error } = await supabase
+      .from("invitations")
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update({ invitation_image_url: null } as any)
+      .eq("id", inv.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
+
 
 
 
@@ -746,7 +837,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: inv, error } = await supabaseAdmin
       .from("invitations")
       .select(
-        "id, code, scan_code, guest_name, rsvp_status, companions, apology_message, responded_at, scanned_at, event_id, caption_text, display_number",
+        "id, code, scan_code, guest_name, rsvp_status, companions, apology_message, responded_at, scanned_at, event_id, caption_text, display_number, invitation_image_url",
       )
       .eq("code", code)
       .maybeSingle();
@@ -755,7 +846,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: event } = await supabaseAdmin
       .from("events")
       .select(
-        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size",
+        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image",
       )
       .eq("id", inv.event_id)
       .single();

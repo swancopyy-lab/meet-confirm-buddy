@@ -1,0 +1,1 @@
+ALTER TABLE public.invitations ADD COLUMN IF NOT EXISTS invitation_image_url text;
