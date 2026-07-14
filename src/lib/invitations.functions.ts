@@ -746,7 +746,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: inv, error } = await supabaseAdmin
       .from("invitations")
       .select(
-        "id, code, scan_code, guest_name, rsvp_status, companions, apology_message, responded_at, scanned_at, event_id, caption_text, display_number",
+        "id, code, scan_code, guest_name, rsvp_status, companions, apology_message, responded_at, scanned_at, event_id, caption_text, display_number, invitation_image_url",
       )
       .eq("code", code)
       .maybeSingle();
@@ -755,7 +755,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: event } = await supabaseAdmin
       .from("events")
       .select(
-        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size",
+        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image",
       )
       .eq("id", inv.event_id)
       .single();
