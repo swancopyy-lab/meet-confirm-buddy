@@ -485,6 +485,7 @@ export const createInvitations = createServerFn({ method: "POST" })
         event_id: z.string().uuid(),
         names: z.array(z.string().trim().max(120)).optional(),
         phones: z.array(z.string().trim().max(30)).optional(),
+        max_scans: z.array(z.number().int().min(1).max(5)).optional(),
       })
       .parse(data),
   )
@@ -529,6 +530,7 @@ export const createInvitations = createServerFn({ method: "POST" })
       guest_name: data.names?.[i]?.trim() || null,
       phone: data.phones?.[i]?.trim() || null,
       display_number: startNum + i,
+      max_scans: data.max_scans?.[i] ?? 1,
     }));
     const { data: inserted, error } = await supabase
       .from("invitations")
@@ -548,15 +550,17 @@ export const updateInvitationDetails = createServerFn({ method: "POST" })
         guest_name: z.string().trim().max(120).optional().nullable(),
         phone: z.string().trim().max(30).optional().nullable(),
         caption_text: z.string().trim().max(200).optional().nullable(),
+        max_scans: z.number().int().min(1).max(5).optional(),
       })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId, claims } = context;
-    const patch: { guest_name?: string | null; phone?: string | null; caption_text?: string | null } = {};
+    const patch: { guest_name?: string | null; phone?: string | null; caption_text?: string | null; max_scans?: number } = {};
     if (data.guest_name !== undefined) patch.guest_name = data.guest_name || null;
     if (data.phone !== undefined) patch.phone = data.phone || null;
     if (data.caption_text !== undefined) patch.caption_text = data.caption_text || null;
+    if (data.max_scans !== undefined) patch.max_scans = data.max_scans;
     // Load the invitation to determine ownership / event scope.
     const { data: inv, error: invErr } = await supabase
       .from("invitations")
@@ -756,13 +760,15 @@ export const checkInByScanCode = createServerFn({ method: "POST" })
       already_image_url: ev?.already_image_url ?? null,
     };
     if (inv.rsvp_status === "declined") return { status: "declined" as const, invitation: inv, ...images };
-    if (inv.scanned_at) return { status: "already" as const, invitation: inv, ...images };
+    // Check multi-scan logic
+    const { max_scans = 1, scan_count = 0 } = inv as unknown as { max_scans?: number; scan_count?: number };
+    if (scan_count >= max_scans) return { status: "already" as const, invitation: inv, ...images };
     if (ev?.scan_date && ev.scan_date !== todayInRiyadh()) {
       return { status: "not_today" as const, invitation: inv, scan_date: ev.scan_date, ...images };
     }
     const { data: updated, error: upErr } = await supabase
       .from("invitations")
-      .update({ scanned_at: new Date().toISOString(), scanned_by: userId })
+      .update({ scanned_at: new Date().toISOString(), scanned_by: userId, scan_count: (scan_count + 1) })
       .eq("id", inv.id)
       .eq("host_id", userId)
       .select()
@@ -781,7 +787,7 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inv, error } = await supabaseAdmin
       .from("invitations")
-      .select("id, guest_name, companions, rsvp_status, scanned_at, event_id")
+      .select("id, guest_name, companions, rsvp_status, scanned_at, event_id, max_scans, scan_count")
       .eq("scan_code", data.scan_code)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -795,7 +801,10 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
       success_image_url: event?.success_image_url ?? null,
       already_image_url: event?.already_image_url ?? null,
     };
-    if (inv.scanned_at) {
+    // Check multi-scan support
+    const maxScans = inv.max_scans ?? 1;
+    const scanCount = inv.scan_count ?? 0;
+    if (scanCount >= maxScans) {
       return {
         status: "already" as const,
         guest_name: inv.guest_name,
@@ -815,7 +824,7 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     const { error: upErr } = await supabaseAdmin
       .from("invitations")
-      .update({ scanned_at: now })
+      .update({ scanned_at: now, scan_count: (scanCount + 1) })
       .eq("id", inv.id);
     if (upErr) throw new Error(upErr.message);
     return {
@@ -837,7 +846,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: inv, error } = await supabaseAdmin
       .from("invitations")
       .select(
-        "id, code, scan_code, guest_name, rsvp_status, companions, apology_message, responded_at, scanned_at, event_id, caption_text, display_number, invitation_image_url",
+        "id, code, scan_code, guest_name, rsvp_status, companions, apology_message, responded_at, scanned_at, event_id, caption_text, display_number, invitation_image_url, max_scans, scan_count",
       )
       .eq("code", code)
       .maybeSingle();
@@ -846,7 +855,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: event } = await supabaseAdmin
       .from("events")
       .select(
-        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image",
+        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_font_weight, caption_x, caption_y, caption_show_box, number_on_image, number_in_filename, qr_color, qr_bg_color, qr_ecc, qr_margin, caption_align",
       )
       .eq("id", inv.event_id)
       .single();
