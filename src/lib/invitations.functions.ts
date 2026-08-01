@@ -156,6 +156,19 @@ export const upsertMyEvent = createServerFn({ method: "POST" })
         qr_margin: z.number().int().min(0).max(8).optional(),
         caption_align: z.enum(["left", "center", "right"]).optional(),
         caption_font_weight: z.number().int().min(100).max(900).optional(),
+        cover_image_url: z.string().max(2000).optional().nullable(),
+        cover_caption_x: z.number().min(0).max(100).optional(),
+        cover_caption_y: z.number().min(0).max(100).optional(),
+        cover_caption_align: z.enum(["left", "center", "right"]).optional(),
+        cover_caption_font_family: z.string().trim().max(80).optional(),
+        cover_caption_font_size: z.number().int().min(10).max(120).optional(),
+        cover_caption_font_weight: z.number().int().min(100).max(900).optional(),
+        cover_caption_text_color: z.string().trim().max(20).optional(),
+        cover_caption_number_color: z.string().trim().max(20).optional(),
+        cover_caption_show_box: z.boolean().optional(),
+        cover_caption_show_number: z.boolean().optional(),
+        default_max_companions: z.number().int().min(0).max(50).optional(),
+        default_scan_limit: z.number().int().min(1).max(50).optional(),
       })
       .parse(data),
   )
@@ -207,7 +220,7 @@ export const uploadEventImage = createServerFn({ method: "POST" })
     z
       .object({
         event_id: z.string().uuid(),
-        kind: z.enum(["invitation", "success", "already"]),
+        kind: z.enum(["invitation", "success", "already", "cover"]),
         data_url: z.string().max(8_000_000),
       })
       .parse(data),
@@ -247,7 +260,9 @@ export const uploadEventImage = createServerFn({ method: "POST" })
         ? "invitation_image_url"
         : data.kind === "success"
           ? "success_image_url"
-          : "already_image_url";
+          : data.kind === "cover"
+            ? "cover_image_url"
+            : "already_image_url";
     const patch: Record<string, string> = { [col]: signed.signedUrl };
     const { data: updated, error: uErr } = await supabase
       .from("events")
@@ -267,7 +282,7 @@ export const clearEventImage = createServerFn({ method: "POST" })
     z
       .object({
         event_id: z.string().uuid(),
-        kind: z.enum(["invitation", "success", "already"]),
+        kind: z.enum(["invitation", "success", "already", "cover"]),
       })
       .parse(data),
   )
@@ -278,7 +293,9 @@ export const clearEventImage = createServerFn({ method: "POST" })
         ? "invitation_image_url"
         : data.kind === "success"
           ? "success_image_url"
-          : "already_image_url";
+          : data.kind === "cover"
+            ? "cover_image_url"
+            : "already_image_url";
     const patch: Record<string, null> = { [col]: null };
     const { error } = await supabase
       .from("events")
@@ -493,11 +510,12 @@ export const createInvitations = createServerFn({ method: "POST" })
     // Host-only: assistants cannot generate barcodes
     const { data: event, error: evErr } = await supabase
       .from("events")
-      .select("id")
+      .select("id, default_max_companions, default_scan_limit")
       .eq("id", data.event_id)
       .eq("host_id", userId)
       .single();
     if (evErr || !event) throw new Error("توليد الباركود مقصور على المضيف");
+    const evDefaults = event as unknown as { default_max_companions: number | null; default_scan_limit: number | null };
 
     // Approval + quota gates (skip for super admin)
     const profile = await requireApproved(supabase as never, userId);
@@ -529,6 +547,8 @@ export const createInvitations = createServerFn({ method: "POST" })
       guest_name: data.names?.[i]?.trim() || null,
       phone: data.phones?.[i]?.trim() || null,
       display_number: startNum + i,
+      max_companions: evDefaults.default_max_companions ?? 0,
+      scan_limit: evDefaults.default_scan_limit ?? 1,
     }));
     const { data: inserted, error } = await supabase
       .from("invitations")
@@ -548,15 +568,25 @@ export const updateInvitationDetails = createServerFn({ method: "POST" })
         guest_name: z.string().trim().max(120).optional().nullable(),
         phone: z.string().trim().max(30).optional().nullable(),
         caption_text: z.string().trim().max(200).optional().nullable(),
+        max_companions: z.number().int().min(0).max(50).optional().nullable(),
+        scan_limit: z.number().int().min(1).max(50).optional(),
       })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId, claims } = context;
-    const patch: { guest_name?: string | null; phone?: string | null; caption_text?: string | null } = {};
+    const patch: {
+      guest_name?: string | null;
+      phone?: string | null;
+      caption_text?: string | null;
+      max_companions?: number | null;
+      scan_limit?: number;
+    } = {};
     if (data.guest_name !== undefined) patch.guest_name = data.guest_name || null;
     if (data.phone !== undefined) patch.phone = data.phone || null;
     if (data.caption_text !== undefined) patch.caption_text = data.caption_text || null;
+    if (data.max_companions !== undefined) patch.max_companions = data.max_companions;
+    if (data.scan_limit !== undefined) patch.scan_limit = data.scan_limit;
     // Load the invitation to determine ownership / event scope.
     const { data: inv, error: invErr } = await supabase
       .from("invitations")
@@ -756,13 +786,17 @@ export const checkInByScanCode = createServerFn({ method: "POST" })
       already_image_url: ev?.already_image_url ?? null,
     };
     if (inv.rsvp_status === "declined") return { status: "declined" as const, invitation: inv, ...images };
-    if (inv.scanned_at) return { status: "already" as const, invitation: inv, ...images };
+    const limits = inv as unknown as { scan_limit: number | null; scan_count: number | null };
+    const scanLimit = limits.scan_limit ?? 1;
+    const scanCount = limits.scan_count ?? 0;
+    if (scanCount >= scanLimit) return { status: "already" as const, invitation: inv, ...images };
     if (ev?.scan_date && ev.scan_date !== todayInRiyadh()) {
       return { status: "not_today" as const, invitation: inv, scan_date: ev.scan_date, ...images };
     }
     const { data: updated, error: upErr } = await supabase
       .from("invitations")
-      .update({ scanned_at: new Date().toISOString(), scanned_by: userId })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update({ scanned_at: new Date().toISOString(), scanned_by: userId, scan_count: scanCount + 1 } as any)
       .eq("id", inv.id)
       .eq("host_id", userId)
       .select()
@@ -781,7 +815,7 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inv, error } = await supabaseAdmin
       .from("invitations")
-      .select("id, guest_name, companions, rsvp_status, scanned_at, event_id")
+      .select("id, guest_name, companions, rsvp_status, scanned_at, event_id, scan_limit, scan_count")
       .eq("scan_code", data.scan_code)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -795,12 +829,17 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
       success_image_url: event?.success_image_url ?? null,
       already_image_url: event?.already_image_url ?? null,
     };
-    if (inv.scanned_at) {
+    const limits = inv as unknown as { scan_limit: number | null; scan_count: number | null };
+    const scanLimit = limits.scan_limit ?? 1;
+    const scanCount = limits.scan_count ?? 0;
+    if (scanCount >= scanLimit) {
       return {
         status: "already" as const,
         guest_name: inv.guest_name,
         companions: inv.companions,
-        scanned_at: inv.scanned_at,
+        scanned_at: inv.scanned_at ?? new Date().toISOString(),
+        scan_count: scanCount,
+        scan_limit: scanLimit,
         ...images,
       };
     }
@@ -815,7 +854,8 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     const { error: upErr } = await supabaseAdmin
       .from("invitations")
-      .update({ scanned_at: now })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update({ scanned_at: now, scan_count: scanCount + 1 } as any)
       .eq("id", inv.id);
     if (upErr) throw new Error(upErr.message);
     return {
@@ -823,6 +863,8 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
       guest_name: inv.guest_name,
       companions: inv.companions,
       scanned_at: now,
+      scan_count: scanCount + 1,
+      scan_limit: scanLimit,
       ...images,
     };
   });
@@ -837,7 +879,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: inv, error } = await supabaseAdmin
       .from("invitations")
       .select(
-        "id, code, scan_code, guest_name, rsvp_status, companions, apology_message, responded_at, scanned_at, event_id, caption_text, display_number, invitation_image_url",
+        "id, code, scan_code, guest_name, rsvp_status, companions, apology_message, responded_at, scanned_at, event_id, caption_text, display_number, invitation_image_url, max_companions, scan_limit, scan_count",
       )
       .eq("code", code)
       .maybeSingle();
@@ -846,7 +888,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: event } = await supabaseAdmin
       .from("events")
       .select(
-        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image",
+        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_number_color, cover_caption_show_box, cover_caption_show_number, default_max_companions",
       )
       .eq("id", inv.event_id)
       .single();
@@ -870,21 +912,35 @@ export const submitRsvp = createServerFn({ method: "POST" })
     const code = data.code.toUpperCase();
     const { data: inv, error: findErr } = await supabaseAdmin
       .from("invitations")
-      .select("id, scanned_at, guest_name")
+      .select("id, scanned_at, guest_name, event_id, max_companions")
       .eq("code", code)
       .maybeSingle();
     if (findErr) throw new Error(findErr.message);
     if (!inv) throw new Error("الدعوة غير موجودة");
     if (inv.scanned_at) throw new Error("لا يمكن تعديل الرد بعد التحقق من الدخول");
 
+    const invRow = inv as unknown as { id: string; guest_name: string | null; event_id: string; max_companions: number | null };
+    let allowedCompanions = invRow.max_companions;
+    if (allowedCompanions === null || allowedCompanions === undefined) {
+      const { data: evRow } = await supabaseAdmin
+        .from("events")
+        .select("default_max_companions")
+        .eq("id", invRow.event_id)
+        .maybeSingle();
+      allowedCompanions = (evRow as unknown as { default_max_companions: number | null } | null)?.default_max_companions ?? 0;
+    }
     const isAttending = data.status === "attending";
+    const requested = data.companions ?? 0;
+    if (isAttending && requested > allowedCompanions) {
+      throw new Error(`الحد المسموح للمرافقين لهذه الدعوة هو ${allowedCompanions}`);
+    }
     const { error } = await supabaseAdmin
       .from("invitations")
       .update({
         rsvp_status: data.status,
         responded_at: new Date().toISOString(),
         guest_name: data.guest_name && !inv.guest_name ? data.guest_name : inv.guest_name,
-        companions: isAttending ? (data.companions ?? 0) : 0,
+        companions: isAttending ? requested : 0,
         apology_message: isAttending ? null : data.apology_message || null,
       })
       .eq("id", inv.id);

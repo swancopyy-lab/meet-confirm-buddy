@@ -70,7 +70,20 @@ export type Database = {
           caption_x: number
           caption_y: number
           companions_enabled: boolean
+          cover_caption_align: string
+          cover_caption_font_family: string
+          cover_caption_font_size: number
+          cover_caption_font_weight: number
+          cover_caption_number_color: string
+          cover_caption_show_box: boolean
+          cover_caption_show_number: boolean
+          cover_caption_text_color: string
+          cover_caption_x: number
+          cover_caption_y: number
+          cover_image_url: string | null
           created_at: string
+          default_max_companions: number
+          default_scan_limit: number
           event_date: string | null
           groom_name: string | null
           host_id: string
@@ -106,7 +119,20 @@ export type Database = {
           caption_x?: number
           caption_y?: number
           companions_enabled?: boolean
+          cover_caption_align?: string
+          cover_caption_font_family?: string
+          cover_caption_font_size?: number
+          cover_caption_font_weight?: number
+          cover_caption_number_color?: string
+          cover_caption_show_box?: boolean
+          cover_caption_show_number?: boolean
+          cover_caption_text_color?: string
+          cover_caption_x?: number
+          cover_caption_y?: number
+          cover_image_url?: string | null
           created_at?: string
+          default_max_companions?: number
+          default_scan_limit?: number
           event_date?: string | null
           groom_name?: string | null
           host_id: string
@@ -142,7 +168,20 @@ export type Database = {
           caption_x?: number
           caption_y?: number
           companions_enabled?: boolean
+          cover_caption_align?: string
+          cover_caption_font_family?: string
+          cover_caption_font_size?: number
+          cover_caption_font_weight?: number
+          cover_caption_number_color?: string
+          cover_caption_show_box?: boolean
+          cover_caption_show_number?: boolean
+          cover_caption_text_color?: string
+          cover_caption_x?: number
+          cover_caption_y?: number
+          cover_image_url?: string | null
           created_at?: string
+          default_max_companions?: number
+          default_scan_limit?: number
           event_date?: string | null
           groom_name?: string | null
           host_id?: string
@@ -179,10 +218,13 @@ export type Database = {
           host_id: string
           id: string
           invitation_image_url: string | null
+          max_companions: number | null
           phone: string | null
           responded_at: string | null
           rsvp_status: Database["public"]["Enums"]["rsvp_status"]
           scan_code: string
+          scan_count: number
+          scan_limit: number
           scanned_at: string | null
           scanned_by: string | null
         }
@@ -198,10 +240,13 @@ export type Database = {
           host_id: string
           id?: string
           invitation_image_url?: string | null
+          max_companions?: number | null
           phone?: string | null
           responded_at?: string | null
           rsvp_status?: Database["public"]["Enums"]["rsvp_status"]
           scan_code?: string
+          scan_count?: number
+          scan_limit?: number
           scanned_at?: string | null
           scanned_by?: string | null
         }
@@ -217,10 +262,13 @@ export type Database = {
           host_id?: string
           id?: string
           invitation_image_url?: string | null
+          max_companions?: number | null
           phone?: string | null
           responded_at?: string | null
           rsvp_status?: Database["public"]["Enums"]["rsvp_status"]
           scan_code?: string
+          scan_count?: number
+          scan_limit?: number
           scanned_at?: string | null
           scanned_by?: string | null
         }

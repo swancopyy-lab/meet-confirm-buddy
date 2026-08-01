@@ -104,6 +104,19 @@ type EventRow = {
   qr_margin: number;
   caption_align: "left" | "center" | "right";
   caption_font_weight: number;
+  cover_image_url: string | null;
+  cover_caption_x: number;
+  cover_caption_y: number;
+  cover_caption_align: "left" | "center" | "right";
+  cover_caption_font_family: string;
+  cover_caption_font_size: number;
+  cover_caption_font_weight: number;
+  cover_caption_text_color: string;
+  cover_caption_number_color: string;
+  cover_caption_show_box: boolean;
+  cover_caption_show_number: boolean;
+  default_max_companions: number;
+  default_scan_limit: number;
 };
 
 type Invitation = {
@@ -120,6 +133,9 @@ type Invitation = {
   caption_text: string | null;
   display_number: number | null;
   invitation_image_url: string | null;
+  max_companions: number | null;
+  scan_limit: number | null;
+  scan_count: number | null;
 };
 
 function EventEditor() {
@@ -175,13 +191,13 @@ function EventEditor() {
   });
 
   const detailsMut = useMutation({
-    mutationFn: (v: { id: string; guest_name?: string; phone?: string; caption_text?: string }) =>
+    mutationFn: (v: { id: string; guest_name?: string; phone?: string; caption_text?: string; max_companions?: number | null; scan_limit?: number }) =>
       updDetails({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["invitations", eventId] }),
   });
 
   const uploadMut = useMutation({
-    mutationFn: (v: { kind: "invitation" | "success" | "already"; data_url: string }) =>
+    mutationFn: (v: { kind: "invitation" | "success" | "already" | "cover"; data_url: string }) =>
       uploadImg({ data: { event_id: eventId, ...v } }),
     onSuccess: () => {
       toast.success("تم رفع الصورة");
@@ -191,7 +207,7 @@ function EventEditor() {
   });
 
   const clearMut = useMutation({
-    mutationFn: (kind: "invitation" | "success" | "already") =>
+    mutationFn: (kind: "invitation" | "success" | "already" | "cover") =>
       clearImg({ data: { event_id: eventId, kind } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["event", eventId] }),
   });
@@ -252,6 +268,7 @@ function EventEditor() {
           <TabsTrigger value="invitations">الدعوات</TabsTrigger>
           <TabsTrigger value="guests">المدعوون</TabsTrigger>
           {isHost && <TabsTrigger value="design">صورة الدعوة</TabsTrigger>}
+          {isHost && <TabsTrigger value="cover">الصورة الأولى</TabsTrigger>}
           {isHost && <TabsTrigger value="scan-pages">صفحات المسح</TabsTrigger>}
           {isHost && <TabsTrigger value="event">تفاصيل الفعالية</TabsTrigger>}
           {isHost && <TabsTrigger value="collab">المساعدون</TabsTrigger>}
@@ -323,6 +340,18 @@ function EventEditor() {
             uploading={uploadMut.isPending}
             onUpload={(dataUrl) => uploadMut.mutate({ kind: "invitation", data_url: dataUrl })}
             onClear={() => clearMut.mutate("invitation")}
+            onSaveDesign={(patch) => saveMut.mutate({ ...ev, ...patch })}
+            saving={saveMut.isPending}
+          />
+        </TabsContent>}
+
+        {isHost && <TabsContent value="cover">
+          <CoverDesigner
+            ev={ev}
+            invitations={invitations}
+            uploading={uploadMut.isPending}
+            onUpload={(dataUrl) => uploadMut.mutate({ kind: "cover", data_url: dataUrl })}
+            onClear={() => clearMut.mutate("cover")}
             onSaveDesign={(patch) => saveMut.mutate({ ...ev, ...patch })}
             saving={saveMut.isPending}
           />
@@ -1308,13 +1337,15 @@ function InvitationCard({
   number: number;
   canDelete: boolean;
   onDelete: () => void;
-  onSaveDetails: (v: { guest_name?: string; phone?: string; caption_text?: string }) => void;
+  onSaveDetails: (v: { guest_name?: string; phone?: string; caption_text?: string; max_companions?: number | null; scan_limit?: number }) => void;
 }) {
   const rsvpUrl = `${origin}/i/${inv.code}`;
   const scanUrl = `${origin}/s/${inv.scan_code}`;
   const [name, setName] = useState(inv.guest_name || "");
   const [phone, setPhone] = useState(inv.phone || "");
   const [caption, setCaption] = useState(inv.caption_text || "");
+  const [maxComp, setMaxComp] = useState<number>(inv.max_companions ?? ev.default_max_companions ?? 0);
+  const [scanLim, setScanLim] = useState<number>(inv.scan_limit ?? ev.default_scan_limit ?? 1);
   const [showWa, setShowWa] = useState(false);
   const [waMsg, setWaMsg] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -1445,6 +1476,23 @@ function InvitationCard({
           <Input value={caption} onChange={(e) => setCaption(e.target.value)}
             onBlur={() => caption !== (inv.caption_text || "") && onSaveDetails({ caption_text: caption })}
             placeholder="نص تحت الباركود (اختياري)" maxLength={200} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px]">عدد المرافقين المسموح</Label>
+              <Input type="number" min={0} max={50} value={maxComp}
+                onChange={(e) => setMaxComp(Math.max(0, Number(e.target.value) || 0))}
+                onBlur={() => maxComp !== (inv.max_companions ?? 0) && onSaveDetails({ max_companions: maxComp })} />
+            </div>
+            <div>
+              <Label className="text-[11px]">عدد مرات المسح</Label>
+              <Input type="number" min={1} max={50} value={scanLim}
+                onChange={(e) => setScanLim(Math.max(1, Number(e.target.value) || 1))}
+                onBlur={() => scanLim !== (inv.scan_limit ?? 1) && onSaveDetails({ scan_limit: scanLim })} />
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            تم المسح {inv.scan_count ?? 0} من {inv.scan_limit ?? 1}
+          </p>
           <div className="flex gap-2">
             <Input value={phone} onChange={(e) => setPhone(e.target.value)}
               onBlur={() => phone !== (inv.phone || "") && onSaveDetails({ phone })}
@@ -2478,5 +2526,269 @@ function InvitationPreviewDialog({
   );
 }
 
+type CoverPatch = Partial<{
+  cover_caption_x: number;
+  cover_caption_y: number;
+  cover_caption_align: "left" | "center" | "right";
+  cover_caption_font_family: string;
+  cover_caption_font_size: number;
+  cover_caption_font_weight: number;
+  cover_caption_text_color: string;
+  cover_caption_number_color: string;
+  cover_caption_show_box: boolean;
+  cover_caption_show_number: boolean;
+  default_max_companions: number;
+  default_scan_limit: number;
+}>;
 
+function CoverDesigner({
+  ev,
+  invitations,
+  uploading,
+  onUpload,
+  onClear,
+  onSaveDesign,
+  saving,
+}: {
+  ev: EventRow;
+  invitations: Invitation[];
+  uploading?: boolean;
+  onUpload: (dataUrl: string) => void;
+  onClear: () => void;
+  onSaveDesign: (patch: CoverPatch) => void;
+  saving?: boolean;
+}) {
+  const [capX, setCapX] = useState<number>(Number(ev.cover_caption_x ?? 50));
+  const [capY, setCapY] = useState<number>(Number(ev.cover_caption_y ?? 90));
+  const [align, setAlign] = useState<"left" | "center" | "right">((ev.cover_caption_align as "left" | "center" | "right") || "center");
+  const [fontFamily, setFontFamily] = useState<string>(ev.cover_caption_font_family || "sans-serif");
+  const [fontSize, setFontSize] = useState<number>(Number(ev.cover_caption_font_size ?? 28));
+  const [weight, setWeight] = useState<number>(Number(ev.cover_caption_font_weight ?? 600));
+  const [textColor, setTextColor] = useState<string>(ev.cover_caption_text_color || "#111111");
+  const [numberColor, setNumberColor] = useState<string>(ev.cover_caption_number_color || "#111111");
+  const [showBox, setShowBox] = useState<boolean>(ev.cover_caption_show_box !== false);
+  const [showNumber, setShowNumber] = useState<boolean>(!!ev.cover_caption_show_number);
+  const [maxComp, setMaxComp] = useState<number>(Number(ev.default_max_companions ?? 0));
+  const [scanLimit, setScanLimit] = useState<number>(Number(ev.default_scan_limit ?? 1));
 
+  const [sampleId, setSampleId] = useState<string>(invitations[0]?.id || "");
+  const sample = invitations.find((i) => i.id === sampleId) || invitations[0] || null;
+  const sampleNumber = sample?.display_number ?? 1;
+  const sampleText = sample?.caption_text || sample?.guest_name || "نموذج للنص";
+
+  const fileRef = useRef<HTMLInputElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  async function onFile(f: File) {
+    if (f.size > 4 * 1024 * 1024) { toast.error("الصورة كبيرة جداً. الحد الأقصى 4 ميجابايت."); return; }
+    const reader = new FileReader();
+    reader.onload = () => onUpload(String(reader.result));
+    reader.readAsDataURL(f);
+  }
+
+  function handleMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragging || !previewRef.current) return;
+    const rect = previewRef.current.getBoundingClientRect();
+    setCapX(Math.max(0, Math.min(100, ((e.clientX - rect.left) / rect.width) * 100)));
+    setCapY(Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)));
+  }
+
+  const captionTransform =
+    align === "left" ? "translate(0, -50%)" : align === "right" ? "translate(-100%, -50%)" : "translate(-50%, -50%)";
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+      <Card className="border-gold/30">
+        <CardHeader className="flex flex-row items-center justify-between gap-2 flex-wrap">
+          <CardTitle className="font-serif">الصورة الأولى (قبل الرد)</CardTitle>
+          {invitations.length > 0 && (
+            <select
+              value={sampleId || invitations[0]?.id || ""}
+              onChange={(e) => setSampleId(e.target.value)}
+              className="rounded-md border border-input bg-background px-2 py-1 text-xs"
+            >
+              {invitations.map((i) => (
+                <option key={i.id} value={i.id}>
+                  دعوة #{i.display_number ?? "?"} {i.caption_text ? `— ${i.caption_text}` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            هذه الصورة تظهر للمدعو عند فتح الرابط مع سؤال الحضور — بدون باركود. بعد اختيار "سأحضر" تظهر له صورة الدعوة مع الباركود.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <input ref={fileRef} type="file" accept="image/*" hidden
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }} />
+            <Button type="button" variant="outline" size="sm" disabled={uploading} onClick={() => fileRef.current?.click()}>
+              <Upload className="size-4" />
+              {uploading ? "جاري الرفع..." : ev.cover_image_url ? "تغيير الصورة" : "رفع الصورة الأولى"}
+            </Button>
+            {ev.cover_image_url && (
+              <Button type="button" variant="ghost" size="sm" onClick={onClear}>
+                <Trash2 className="size-4" /> إزالة
+              </Button>
+            )}
+          </div>
+
+          {ev.cover_image_url ? (
+            <div
+              ref={previewRef}
+              onPointerMove={handleMove}
+              onPointerUp={() => setDragging(false)}
+              onPointerLeave={() => setDragging(false)}
+              className="relative mx-auto w-full max-w-md overflow-hidden rounded-md border border-gold/30 select-none touch-none"
+            >
+              <img src={ev.cover_image_url} alt="معاينة" className="block w-full h-auto" draggable={false} />
+              <div
+                onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setDragging(true); }}
+                className="absolute cursor-move select-none ring-1 ring-dashed ring-gold/50 px-2 py-1"
+                style={{
+                  left: `${capX}%`,
+                  top: `${capY}%`,
+                  transform: captionTransform,
+                  textAlign: align,
+                  fontFamily,
+                  minWidth: "40px",
+                  background: showBox ? "rgba(255,255,255,0.85)" : "transparent",
+                  touchAction: "none",
+                }}
+              >
+                {showNumber && (
+                  <div style={{ color: numberColor, fontSize: `${Math.max(10, fontSize * 0.4)}px`, fontWeight: 700, lineHeight: 1.2 }}>
+                    {sampleNumber}
+                  </div>
+                )}
+                <div style={{ color: textColor, fontSize: `${Math.max(9, fontSize * 0.35)}px`, fontWeight: weight, lineHeight: 1.2 }}>
+                  {sampleText}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 rounded-md border-2 border-dashed border-gold/30 p-12 text-center text-muted-foreground">
+              <ImageIcon className="size-10 text-gold/60" />
+              <p>ارفع الصورة الأولى التي تظهر للمدعو قبل تأكيد الحضور.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-gold/30">
+        <CardHeader>
+          <CardTitle className="font-serif text-base">خيارات الصورة الأولى</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <section className="space-y-2">
+            <p className="text-xs font-semibold">النص على الصورة</p>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={showNumber} onChange={(e) => setShowNumber(e.target.checked)} />
+              إظهار رقم الدعوة
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={showBox} onChange={(e) => setShowBox(e.target.checked)} />
+              خلفية بيضاء خلف النص
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">X ({Math.round(capX)}%)</Label>
+                <Slider value={[capX]} min={0} max={100} step={1} onValueChange={(v) => setCapX(v[0])} />
+              </div>
+              <div>
+                <Label className="text-xs">Y ({Math.round(capY)}%)</Label>
+                <Slider value={[capY]} min={0} max={100} step={1} onValueChange={(v) => setCapY(v[0])} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">لون النص</Label>
+                <Input type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="h-9 p-1" />
+              </div>
+              <div>
+                <Label className="text-xs">لون الرقم</Label>
+                <Input type="color" value={numberColor} onChange={(e) => setNumberColor(e.target.value)} className="h-9 p-1" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">الخط</Label>
+              <select value={fontFamily} onChange={(e) => setFontFamily(e.target.value)}
+                className="w-full rounded-md border border-input bg-background px-2 py-1.5 text-sm" style={{ fontFamily }}>
+                <option value="sans-serif">افتراضي</option>
+                <option value="serif">Serif</option>
+                <option value="monospace">Monospace</option>
+                <option value="'Cairo', sans-serif" style={{ fontFamily: "'Cairo', sans-serif" }}>Cairo — القاهرة</option>
+                <option value="'Tajawal', sans-serif" style={{ fontFamily: "'Tajawal', sans-serif" }}>Tajawal — تجوّل</option>
+                <option value="'Almarai', sans-serif" style={{ fontFamily: "'Almarai', sans-serif" }}>Almarai — المراعي</option>
+                <option value="'Reem Kufi', sans-serif" style={{ fontFamily: "'Reem Kufi', sans-serif" }}>Reem Kufi — ريم كوفي</option>
+                <option value="'El Messiri', sans-serif" style={{ fontFamily: "'El Messiri', sans-serif" }}>El Messiri — المسيري</option>
+                <option value="'Markazi Text', serif" style={{ fontFamily: "'Markazi Text', serif" }}>Markazi — مركزي</option>
+                <option value="'Amiri', serif" style={{ fontFamily: "'Amiri', serif" }}>Amiri — أميري</option>
+                <option value="'Scheherazade New', serif" style={{ fontFamily: "'Scheherazade New', serif" }}>Scheherazade — شهرزاد</option>
+                <option value="'Aref Ruqaa', serif" style={{ fontFamily: "'Aref Ruqaa', serif" }}>Aref Ruqaa — عارف رقعة</option>
+                <option value="'Lateef', serif" style={{ fontFamily: "'Lateef', serif" }}>Lateef — لطيف</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">الحجم ({fontSize})</Label>
+                <Slider value={[fontSize]} min={10} max={80} step={1} onValueChange={(v) => setFontSize(v[0])} />
+              </div>
+              <div>
+                <Label className="text-xs">وزن الخط ({weight})</Label>
+                <Slider value={[weight]} min={100} max={900} step={100} onValueChange={(v) => setWeight(v[0])} />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">المحاذاة</Label>
+              <div className="flex gap-1">
+                {(["right", "center", "left"] as const).map((a) => (
+                  <Button key={a} size="sm" type="button" variant={align === a ? "default" : "outline"} onClick={() => setAlign(a)}>
+                    {a === "right" ? "يمين" : a === "left" ? "يسار" : "وسط"}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-2 border-t border-gold/20 pt-3">
+            <p className="text-xs font-semibold">القيم الافتراضية للدعوات الجديدة</p>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <Label className="text-xs">عدد المرافقين المسموح</Label>
+                <Input type="number" min={0} max={50} value={maxComp}
+                  onChange={(e) => setMaxComp(Math.max(0, Number(e.target.value) || 0))} />
+              </div>
+              <div>
+                <Label className="text-xs">عدد مرات المسح</Label>
+                <Input type="number" min={1} max={50} value={scanLimit}
+                  onChange={(e) => setScanLimit(Math.max(1, Number(e.target.value) || 1))} />
+              </div>
+            </div>
+            <p className="text-[10px] text-muted-foreground">
+              تُطبَّق على الدعوات المولّدة بعد الحفظ. يمكنك تعديل كل دعوة على حدة من بطاقتها.
+            </p>
+          </section>
+
+          <Button className="w-full" disabled={saving} onClick={() => onSaveDesign({
+            cover_caption_x: capX,
+            cover_caption_y: capY,
+            cover_caption_align: align,
+            cover_caption_font_family: fontFamily,
+            cover_caption_font_size: fontSize,
+            cover_caption_font_weight: weight,
+            cover_caption_text_color: textColor,
+            cover_caption_number_color: numberColor,
+            cover_caption_show_box: showBox,
+            cover_caption_show_number: showNumber,
+            default_max_companions: maxComp,
+            default_scan_limit: scanLimit,
+          })}>
+            {saving ? "جاري الحفظ..." : "حفظ إعدادات الصورة الأولى"}
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}

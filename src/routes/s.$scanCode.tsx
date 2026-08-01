@@ -16,6 +16,8 @@ type R =
       guest_name: string | null;
       companions: number;
       scanned_at: string;
+      scan_count?: number;
+      scan_limit?: number;
       success_image_url: string | null;
       already_image_url: string | null;
     }
@@ -24,6 +26,8 @@ type R =
       guest_name: string | null;
       companions: number;
       scanned_at: string;
+      scan_count?: number;
+      scan_limit?: number;
       success_image_url: string | null;
       already_image_url: string | null;
     }
@@ -79,6 +83,11 @@ function ScanLanding() {
                 <p className="text-xs text-muted-foreground">
                   {new Date(r.scanned_at).toLocaleString("ar")}
                 </p>
+                {r.scan_limit && r.scan_limit > 1 && (
+                  <p className="text-xs text-muted-foreground">
+                    المسحات: {r.scan_count} / {r.scan_limit}
+                  </p>
+                )}
               </div>
             </>
           )}
@@ -100,6 +109,11 @@ function ScanLanding() {
                 <p className="text-sm text-muted-foreground">
                   وقت الدخول السابق: {new Date(r.scanned_at).toLocaleString("ar")}
                 </p>
+                {r.scan_limit && (
+                  <p className="text-xs text-muted-foreground">
+                    استُهلك عدد المسحات المسموح ({r.scan_count} / {r.scan_limit})
+                  </p>
+                )}
               </div>
             </>
           )}
