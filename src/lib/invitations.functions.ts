@@ -510,11 +510,12 @@ export const createInvitations = createServerFn({ method: "POST" })
     // Host-only: assistants cannot generate barcodes
     const { data: event, error: evErr } = await supabase
       .from("events")
-      .select("id")
+      .select("id, default_max_companions, default_scan_limit")
       .eq("id", data.event_id)
       .eq("host_id", userId)
       .single();
     if (evErr || !event) throw new Error("توليد الباركود مقصور على المضيف");
+    const evDefaults = event as unknown as { default_max_companions: number | null; default_scan_limit: number | null };
 
     // Approval + quota gates (skip for super admin)
     const profile = await requireApproved(supabase as never, userId);
@@ -546,6 +547,8 @@ export const createInvitations = createServerFn({ method: "POST" })
       guest_name: data.names?.[i]?.trim() || null,
       phone: data.phones?.[i]?.trim() || null,
       display_number: startNum + i,
+      max_companions: evDefaults.default_max_companions ?? 0,
+      scan_limit: evDefaults.default_scan_limit ?? 1,
     }));
     const { data: inserted, error } = await supabase
       .from("invitations")
@@ -565,15 +568,25 @@ export const updateInvitationDetails = createServerFn({ method: "POST" })
         guest_name: z.string().trim().max(120).optional().nullable(),
         phone: z.string().trim().max(30).optional().nullable(),
         caption_text: z.string().trim().max(200).optional().nullable(),
+        max_companions: z.number().int().min(0).max(50).optional().nullable(),
+        scan_limit: z.number().int().min(1).max(50).optional(),
       })
       .parse(data),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId, claims } = context;
-    const patch: { guest_name?: string | null; phone?: string | null; caption_text?: string | null } = {};
+    const patch: {
+      guest_name?: string | null;
+      phone?: string | null;
+      caption_text?: string | null;
+      max_companions?: number | null;
+      scan_limit?: number;
+    } = {};
     if (data.guest_name !== undefined) patch.guest_name = data.guest_name || null;
     if (data.phone !== undefined) patch.phone = data.phone || null;
     if (data.caption_text !== undefined) patch.caption_text = data.caption_text || null;
+    if (data.max_companions !== undefined) patch.max_companions = data.max_companions;
+    if (data.scan_limit !== undefined) patch.scan_limit = data.scan_limit;
     // Load the invitation to determine ownership / event scope.
     const { data: inv, error: invErr } = await supabase
       .from("invitations")
@@ -854,7 +867,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: inv, error } = await supabaseAdmin
       .from("invitations")
       .select(
-        "id, code, scan_code, guest_name, rsvp_status, companions, apology_message, responded_at, scanned_at, event_id, caption_text, display_number, invitation_image_url",
+        "id, code, scan_code, guest_name, rsvp_status, companions, apology_message, responded_at, scanned_at, event_id, caption_text, display_number, invitation_image_url, max_companions, scan_limit, scan_count",
       )
       .eq("code", code)
       .maybeSingle();
@@ -863,7 +876,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: event } = await supabaseAdmin
       .from("events")
       .select(
-        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image",
+        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_number_color, cover_caption_show_box, cover_caption_show_number, default_max_companions",
       )
       .eq("id", inv.event_id)
       .single();
@@ -887,21 +900,35 @@ export const submitRsvp = createServerFn({ method: "POST" })
     const code = data.code.toUpperCase();
     const { data: inv, error: findErr } = await supabaseAdmin
       .from("invitations")
-      .select("id, scanned_at, guest_name")
+      .select("id, scanned_at, guest_name, event_id, max_companions")
       .eq("code", code)
       .maybeSingle();
     if (findErr) throw new Error(findErr.message);
     if (!inv) throw new Error("الدعوة غير موجودة");
     if (inv.scanned_at) throw new Error("لا يمكن تعديل الرد بعد التحقق من الدخول");
 
+    const invRow = inv as unknown as { id: string; guest_name: string | null; event_id: string; max_companions: number | null };
+    let allowedCompanions = invRow.max_companions;
+    if (allowedCompanions === null || allowedCompanions === undefined) {
+      const { data: evRow } = await supabaseAdmin
+        .from("events")
+        .select("default_max_companions")
+        .eq("id", invRow.event_id)
+        .maybeSingle();
+      allowedCompanions = (evRow as unknown as { default_max_companions: number | null } | null)?.default_max_companions ?? 0;
+    }
     const isAttending = data.status === "attending";
+    const requested = data.companions ?? 0;
+    if (isAttending && requested > allowedCompanions) {
+      throw new Error(`الحد المسموح للمرافقين لهذه الدعوة هو ${allowedCompanions}`);
+    }
     const { error } = await supabaseAdmin
       .from("invitations")
       .update({
         rsvp_status: data.status,
         responded_at: new Date().toISOString(),
         guest_name: data.guest_name && !inv.guest_name ? data.guest_name : inv.guest_name,
-        companions: isAttending ? (data.companions ?? 0) : 0,
+        companions: isAttending ? requested : 0,
         apology_message: isAttending ? null : data.apology_message || null,
       })
       .eq("id", inv.id);
