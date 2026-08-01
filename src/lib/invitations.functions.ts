@@ -786,13 +786,17 @@ export const checkInByScanCode = createServerFn({ method: "POST" })
       already_image_url: ev?.already_image_url ?? null,
     };
     if (inv.rsvp_status === "declined") return { status: "declined" as const, invitation: inv, ...images };
-    if (inv.scanned_at) return { status: "already" as const, invitation: inv, ...images };
+    const limits = inv as unknown as { scan_limit: number | null; scan_count: number | null };
+    const scanLimit = limits.scan_limit ?? 1;
+    const scanCount = limits.scan_count ?? 0;
+    if (scanCount >= scanLimit) return { status: "already" as const, invitation: inv, ...images };
     if (ev?.scan_date && ev.scan_date !== todayInRiyadh()) {
       return { status: "not_today" as const, invitation: inv, scan_date: ev.scan_date, ...images };
     }
     const { data: updated, error: upErr } = await supabase
       .from("invitations")
-      .update({ scanned_at: new Date().toISOString(), scanned_by: userId })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update({ scanned_at: new Date().toISOString(), scanned_by: userId, scan_count: scanCount + 1 } as any)
       .eq("id", inv.id)
       .eq("host_id", userId)
       .select()
@@ -811,7 +815,7 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: inv, error } = await supabaseAdmin
       .from("invitations")
-      .select("id, guest_name, companions, rsvp_status, scanned_at, event_id")
+      .select("id, guest_name, companions, rsvp_status, scanned_at, event_id, scan_limit, scan_count")
       .eq("scan_code", data.scan_code)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -825,12 +829,17 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
       success_image_url: event?.success_image_url ?? null,
       already_image_url: event?.already_image_url ?? null,
     };
-    if (inv.scanned_at) {
+    const limits = inv as unknown as { scan_limit: number | null; scan_count: number | null };
+    const scanLimit = limits.scan_limit ?? 1;
+    const scanCount = limits.scan_count ?? 0;
+    if (scanCount >= scanLimit) {
       return {
         status: "already" as const,
         guest_name: inv.guest_name,
         companions: inv.companions,
-        scanned_at: inv.scanned_at,
+        scanned_at: inv.scanned_at ?? new Date().toISOString(),
+        scan_count: scanCount,
+        scan_limit: scanLimit,
         ...images,
       };
     }
@@ -845,7 +854,8 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     const { error: upErr } = await supabaseAdmin
       .from("invitations")
-      .update({ scanned_at: now })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .update({ scanned_at: now, scan_count: scanCount + 1 } as any)
       .eq("id", inv.id);
     if (upErr) throw new Error(upErr.message);
     return {
@@ -853,6 +863,8 @@ export const scanPublicByCode = createServerFn({ method: "POST" })
       guest_name: inv.guest_name,
       companions: inv.companions,
       scanned_at: now,
+      scan_count: scanCount + 1,
+      scan_limit: scanLimit,
       ...images,
     };
   });
