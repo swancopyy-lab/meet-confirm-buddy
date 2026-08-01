@@ -104,6 +104,19 @@ type EventRow = {
   qr_margin: number;
   caption_align: "left" | "center" | "right";
   caption_font_weight: number;
+  cover_image_url: string | null;
+  cover_caption_x: number;
+  cover_caption_y: number;
+  cover_caption_align: "left" | "center" | "right";
+  cover_caption_font_family: string;
+  cover_caption_font_size: number;
+  cover_caption_font_weight: number;
+  cover_caption_text_color: string;
+  cover_caption_number_color: string;
+  cover_caption_show_box: boolean;
+  cover_caption_show_number: boolean;
+  default_max_companions: number;
+  default_scan_limit: number;
 };
 
 type Invitation = {
@@ -120,6 +133,9 @@ type Invitation = {
   caption_text: string | null;
   display_number: number | null;
   invitation_image_url: string | null;
+  max_companions: number | null;
+  scan_limit: number | null;
+  scan_count: number | null;
 };
 
 function EventEditor() {
@@ -175,13 +191,13 @@ function EventEditor() {
   });
 
   const detailsMut = useMutation({
-    mutationFn: (v: { id: string; guest_name?: string; phone?: string; caption_text?: string }) =>
+    mutationFn: (v: { id: string; guest_name?: string; phone?: string; caption_text?: string; max_companions?: number | null; scan_limit?: number }) =>
       updDetails({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["invitations", eventId] }),
   });
 
   const uploadMut = useMutation({
-    mutationFn: (v: { kind: "invitation" | "success" | "already"; data_url: string }) =>
+    mutationFn: (v: { kind: "invitation" | "success" | "already" | "cover"; data_url: string }) =>
       uploadImg({ data: { event_id: eventId, ...v } }),
     onSuccess: () => {
       toast.success("تم رفع الصورة");
@@ -191,7 +207,7 @@ function EventEditor() {
   });
 
   const clearMut = useMutation({
-    mutationFn: (kind: "invitation" | "success" | "already") =>
+    mutationFn: (kind: "invitation" | "success" | "already" | "cover") =>
       clearImg({ data: { event_id: eventId, kind } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["event", eventId] }),
   });
@@ -252,6 +268,7 @@ function EventEditor() {
           <TabsTrigger value="invitations">الدعوات</TabsTrigger>
           <TabsTrigger value="guests">المدعوون</TabsTrigger>
           {isHost && <TabsTrigger value="design">صورة الدعوة</TabsTrigger>}
+          {isHost && <TabsTrigger value="cover">الصورة الأولى</TabsTrigger>}
           {isHost && <TabsTrigger value="scan-pages">صفحات المسح</TabsTrigger>}
           {isHost && <TabsTrigger value="event">تفاصيل الفعالية</TabsTrigger>}
           {isHost && <TabsTrigger value="collab">المساعدون</TabsTrigger>}
@@ -323,6 +340,18 @@ function EventEditor() {
             uploading={uploadMut.isPending}
             onUpload={(dataUrl) => uploadMut.mutate({ kind: "invitation", data_url: dataUrl })}
             onClear={() => clearMut.mutate("invitation")}
+            onSaveDesign={(patch) => saveMut.mutate({ ...ev, ...patch })}
+            saving={saveMut.isPending}
+          />
+        </TabsContent>}
+
+        {isHost && <TabsContent value="cover">
+          <CoverDesigner
+            ev={ev}
+            invitations={invitations}
+            uploading={uploadMut.isPending}
+            onUpload={(dataUrl) => uploadMut.mutate({ kind: "cover", data_url: dataUrl })}
+            onClear={() => clearMut.mutate("cover")}
             onSaveDesign={(patch) => saveMut.mutate({ ...ev, ...patch })}
             saving={saveMut.isPending}
           />
@@ -1308,7 +1337,7 @@ function InvitationCard({
   number: number;
   canDelete: boolean;
   onDelete: () => void;
-  onSaveDetails: (v: { guest_name?: string; phone?: string; caption_text?: string }) => void;
+  onSaveDetails: (v: { guest_name?: string; phone?: string; caption_text?: string; max_companions?: number | null; scan_limit?: number }) => void;
 }) {
   const rsvpUrl = `${origin}/i/${inv.code}`;
   const scanUrl = `${origin}/s/${inv.scan_code}`;
