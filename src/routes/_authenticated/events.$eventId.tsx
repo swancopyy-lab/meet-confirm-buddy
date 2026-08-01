@@ -1344,6 +1344,8 @@ function InvitationCard({
   const [name, setName] = useState(inv.guest_name || "");
   const [phone, setPhone] = useState(inv.phone || "");
   const [caption, setCaption] = useState(inv.caption_text || "");
+  const [maxComp, setMaxComp] = useState<number>(inv.max_companions ?? ev.default_max_companions ?? 0);
+  const [scanLim, setScanLim] = useState<number>(inv.scan_limit ?? ev.default_scan_limit ?? 1);
   const [showWa, setShowWa] = useState(false);
   const [waMsg, setWaMsg] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
@@ -1474,6 +1476,23 @@ function InvitationCard({
           <Input value={caption} onChange={(e) => setCaption(e.target.value)}
             onBlur={() => caption !== (inv.caption_text || "") && onSaveDetails({ caption_text: caption })}
             placeholder="نص تحت الباركود (اختياري)" maxLength={200} />
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px]">عدد المرافقين المسموح</Label>
+              <Input type="number" min={0} max={50} value={maxComp}
+                onChange={(e) => setMaxComp(Math.max(0, Number(e.target.value) || 0))}
+                onBlur={() => maxComp !== (inv.max_companions ?? 0) && onSaveDetails({ max_companions: maxComp })} />
+            </div>
+            <div>
+              <Label className="text-[11px]">عدد مرات المسح</Label>
+              <Input type="number" min={1} max={50} value={scanLim}
+                onChange={(e) => setScanLim(Math.max(1, Number(e.target.value) || 1))}
+                onBlur={() => scanLim !== (inv.scan_limit ?? 1) && onSaveDetails({ scan_limit: scanLim })} />
+            </div>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            تم المسح {inv.scan_count ?? 0} من {inv.scan_limit ?? 1}
+          </p>
           <div className="flex gap-2">
             <Input value={phone} onChange={(e) => setPhone(e.target.value)}
               onBlur={() => phone !== (inv.phone || "") && onSaveDetails({ phone })}
