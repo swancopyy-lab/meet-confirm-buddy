@@ -138,8 +138,20 @@ function InvitePage() {
     caption_font_weight?: number | null;
     caption_align?: "left" | "center" | "right" | null;
     number_on_image?: boolean;
+    cover_image_url?: string | null;
+    cover_caption_x?: number | null;
+    cover_caption_y?: number | null;
+    cover_caption_align?: "left" | "center" | "right" | null;
+    cover_caption_font_family?: string | null;
+    cover_caption_font_size?: number | null;
+    cover_caption_font_weight?: number | null;
+    cover_caption_text_color?: string | null;
+    cover_caption_number_color?: string | null;
+    cover_caption_show_box?: boolean;
+    cover_caption_show_number?: boolean;
+    default_max_companions?: number | null;
   }) | undefined;
-  const inv2 = inv as typeof inv & { caption_text?: string | null; display_number?: number | null; invitation_image_url?: string | null };
+  const inv2 = inv as typeof inv & { caption_text?: string | null; display_number?: number | null; invitation_image_url?: string | null; max_companions?: number | null };
   const venueMap = ev2?.venue_map_url;
   const companionsEnabled = ev2?.companions_enabled ?? true;
   const showNumber = ev2?.caption_show_number ?? false;
@@ -157,6 +169,24 @@ function InvitePage() {
   const capTransform =
     capAlign === "left" ? "translate(0, -50%)" : capAlign === "right" ? "translate(-100%, -50%)" : "translate(-50%, -50%)";
   const invitationImage = inv2.invitation_image_url || event?.invitation_image_url || null;
+  const coverImage = ev2?.cover_image_url || null;
+  const maxCompanions = inv2.max_companions ?? ev2?.default_max_companions ?? 0;
+  const showQr = inv.rsvp_status === "attending" || !!inv.scanned_at;
+  const coverX = Number(ev2?.cover_caption_x ?? 50);
+  const coverY = Number(ev2?.cover_caption_y ?? 90);
+  const coverAlign = (ev2?.cover_caption_align || "center") as "left" | "center" | "right";
+  const coverTransform =
+    coverAlign === "left" ? "translate(0, -50%)" : coverAlign === "right" ? "translate(-100%, -50%)" : "translate(-50%, -50%)";
+  const coverFont = ev2?.cover_caption_font_family || undefined;
+  const coverFontSize = Number(ev2?.cover_caption_font_size ?? 28);
+  const coverWeight = Number(ev2?.cover_caption_font_weight ?? 600);
+  const coverTextColor = ev2?.cover_caption_text_color || "#111";
+  const coverNumberColor = ev2?.cover_caption_number_color || "#111";
+  const coverShowBox = ev2?.cover_caption_show_box !== false;
+  const coverShowNumber = !!ev2?.cover_caption_show_number;
+  const coverTextCqw = Math.max(1.4, (qrSize * coverFontSize * 0.9) / 100);
+  const coverNumberCqw = Math.max(1.6, (qrSize * coverFontSize) / 100);
+  const coverText = inv2.caption_text || inv.guest_name || "";
   // Size fonts relative to the invitation image container (matches designer canvas sizing)
   const numberFontCqw = Math.max(1.6, (qrSize * capFontSize) / 100);
   const textFontCqw = Math.max(1.4, (qrSize * capFontSize * 0.9) / 100);
@@ -207,6 +237,49 @@ function InvitePage() {
       toast.error((e as Error).message || "تعذّرت العملية");
     }
   }
+
+  const coverBlock = coverImage ? (
+    <Card className="overflow-hidden border-gold/40 shadow-2xl shadow-primary/10">
+      <div className="relative w-full" style={{ containerType: "inline-size" }}>
+        <img src={coverImage} alt="دعوة" className="block w-full h-auto" />
+        {(coverShowNumber || coverText) && (
+          <div
+            className="absolute px-2 py-1 leading-tight"
+            style={{
+              left: `${coverX}%`,
+              top: `${coverY}%`,
+              transform: coverTransform,
+              textAlign: coverAlign,
+              fontFamily: coverFont,
+              background: coverShowBox ? "rgba(255,255,255,0.88)" : "transparent",
+              borderRadius: coverShowBox ? 6 : 0,
+              maxWidth: "80%",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {coverShowNumber && displayNumber != null && (
+              <div style={{ color: coverNumberColor, fontSize: `${coverNumberCqw}cqw`, fontWeight: 700, lineHeight: 1.1 }}>
+                {displayNumber}
+              </div>
+            )}
+            {coverText && (
+              <div style={{ color: coverTextColor, fontSize: `${coverTextCqw}cqw`, fontWeight: coverWeight, lineHeight: 1.15 }}>
+                {coverText}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+      {venueMap && (
+        <CardContent className="text-center py-3">
+          <a href={venueMap} target="_blank" rel="noopener noreferrer"
+            className="inline-flex items-center gap-1.5 text-sm text-primary underline underline-offset-4">
+            <MapPin className="size-4" /> فتح موقع القاعة على الخريطة
+          </a>
+        </CardContent>
+      )}
+    </Card>
+  ) : null;
 
   const invitationBlock = invitationImage ? (
     <Card className="overflow-hidden border-gold/40 shadow-2xl shadow-primary/10">
@@ -411,16 +484,18 @@ function InvitePage() {
                   </Button>
                 </div>
 
-                {mode === "attending" && companionsEnabled && (
+                {mode === "attending" && companionsEnabled && maxCompanions > 0 && (
                   <div className="space-y-2 rounded-md border border-gold/30 bg-secondary/30 p-4">
-                    <Label htmlFor="comp">عدد المرافقين (بدونك)</Label>
+                    <Label htmlFor="comp">عدد المرافقين (بدونك) — الحد الأقصى {maxCompanions}</Label>
                     <Input
                       id="comp"
                       type="number"
                       min={0}
-                      max={20}
+                      max={maxCompanions}
                       value={companions}
-                      onChange={(e) => setCompanions(Math.max(0, Number(e.target.value) || 0))}
+                      onChange={(e) =>
+                        setCompanions(Math.max(0, Math.min(maxCompanions, Number(e.target.value) || 0)))
+                      }
                     />
                     <p className="text-xs text-muted-foreground">
                       إجمالي الحضور: {companions + 1}
@@ -449,7 +524,7 @@ function InvitePage() {
                     onClick={() =>
                       mutation.mutate({
                         status: mode,
-                        companions: mode === "attending" ? companions : undefined,
+                        companions: mode === "attending" ? Math.min(companions, maxCompanions) : undefined,
                         apology_message: mode === "declined" ? apology : undefined,
                       })
                     }
@@ -484,8 +559,8 @@ function InvitePage() {
           </CardContent>
         </Card>
 
-        {/* Invitation card shown after the RSVP so guests always see the buttons first */}
-        {invitationBlock}
+        {/* Before confirming: show the first image. After confirming: show the QR invitation. */}
+        {showQr ? invitationBlock : (coverBlock ?? invitationBlock)}
       </div>
     </div>
   );
