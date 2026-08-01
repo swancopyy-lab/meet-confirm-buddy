@@ -220,7 +220,7 @@ export const uploadEventImage = createServerFn({ method: "POST" })
     z
       .object({
         event_id: z.string().uuid(),
-        kind: z.enum(["invitation", "success", "already"]),
+        kind: z.enum(["invitation", "success", "already", "cover"]),
         data_url: z.string().max(8_000_000),
       })
       .parse(data),
@@ -260,7 +260,9 @@ export const uploadEventImage = createServerFn({ method: "POST" })
         ? "invitation_image_url"
         : data.kind === "success"
           ? "success_image_url"
-          : "already_image_url";
+          : data.kind === "cover"
+            ? "cover_image_url"
+            : "already_image_url";
     const patch: Record<string, string> = { [col]: signed.signedUrl };
     const { data: updated, error: uErr } = await supabase
       .from("events")
@@ -280,7 +282,7 @@ export const clearEventImage = createServerFn({ method: "POST" })
     z
       .object({
         event_id: z.string().uuid(),
-        kind: z.enum(["invitation", "success", "already"]),
+        kind: z.enum(["invitation", "success", "already", "cover"]),
       })
       .parse(data),
   )
@@ -291,7 +293,9 @@ export const clearEventImage = createServerFn({ method: "POST" })
         ? "invitation_image_url"
         : data.kind === "success"
           ? "success_image_url"
-          : "already_image_url";
+          : data.kind === "cover"
+            ? "cover_image_url"
+            : "already_image_url";
     const patch: Record<string, null> = { [col]: null };
     const { error } = await supabase
       .from("events")
