@@ -1030,6 +1030,7 @@ function InvitationDesigner({
                 onPointerMove={handleMove}
                 onPointerUp={() => setDragging(null)}
                 onPointerLeave={() => setDragging(null)}
+                style={{ containerType: "inline-size" }}
                 className="relative mx-auto w-full max-w-md overflow-hidden rounded-md border border-gold/30 select-none touch-none"
               >
                 <img src={ev.invitation_image_url} alt="معاينة" className="block w-full h-auto" draggable={false} />
