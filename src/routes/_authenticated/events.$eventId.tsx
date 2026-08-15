@@ -2517,6 +2517,7 @@ function CoverDesigner({
     setCapY(Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)));
   }
 
+  const coverQrSize = Number((ev as { qr_size?: number | null }).qr_size ?? 22);
   const captionTransform =
     align === "left" ? "translate(0, -50%)" : align === "right" ? "translate(-100%, -50%)" : "translate(-50%, -50%)";
 
