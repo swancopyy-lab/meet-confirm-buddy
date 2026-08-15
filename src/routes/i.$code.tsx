@@ -190,6 +190,9 @@ function InvitePage() {
   // Size fonts relative to the invitation image container (matches designer canvas sizing)
   const numberFontCqw = Math.max(1.6, (qrSize * capFontSize) / 100);
   const textFontCqw = Math.max(1.4, (qrSize * capFontSize * 0.9) / 100);
+  const companionsText = companionsLabel(inv.rsvp_status, inv.companions);
+  const companionsOver = companions > maxCompanions;
+
 
   async function downloadShare(share: boolean) {
     try {
