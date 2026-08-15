@@ -193,30 +193,30 @@ function InvitePage() {
 
   async function downloadShare(share: boolean) {
     try {
-      const canvas = document.createElement("canvas");
-      const size = 900;
-      canvas.width = size;
-      canvas.height = size + 220;
-      const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      const qrCanvas = document.createElement("canvas");
-      await QRCode.toCanvas(qrCanvas, scanUrl, { width: size, margin: 1, color: { dark: "#0F3D2E", light: "#FFFFFF" } });
-      ctx.drawImage(qrCanvas, 0, 0, size, size);
-      ctx.textAlign = "center";
-      let y = size + 30;
-      if (showNumber && displayNumber) {
-        ctx.fillStyle = numberColor || "#111";
-        ctx.font = `bold 72px ${captionFont || "sans-serif"}`;
-        ctx.fillText(String(displayNumber), size / 2, y + 60);
-        y += 90;
-      }
-      if (captionText) {
-        ctx.fillStyle = textColor || "#111";
-        ctx.font = `600 48px ${captionFont || "sans-serif"}`;
-        ctx.fillText(captionText, size / 2, y + 40);
-      }
-      const dataUrl = canvas.toDataURL("image/png");
+      const dataUrl = await composeInvitationImage({
+        imageUrl: invitationImage,
+        scanUrl,
+        number: displayNumber,
+        showNumber: showNumber && (ev2?.number_on_image ?? true),
+        captionText: captionText,
+        companionsText: companionsLabel(inv.rsvp_status, inv.companions),
+        numberColor: numberColor,
+        textColor: textColor,
+        fontFamily: captionFont,
+        align: capAlign,
+        fontWeight: capFontWeight,
+        fontSize: capFontSize,
+        showBox: capShowBox,
+        captionX: capX,
+        captionY: capY,
+        qrX,
+        qrY,
+        qrSize,
+        qrColor: (event as { qr_color?: string | null } | undefined)?.qr_color,
+        qrBgColor: (event as { qr_bg_color?: string | null } | undefined)?.qr_bg_color,
+        qrEcc: ((event as { qr_ecc?: string | null } | undefined)?.qr_ecc || "M") as "L" | "M" | "Q" | "H",
+        qrMargin: (event as { qr_margin?: number | null } | undefined)?.qr_margin ?? 1,
+      });
       const bin = atob(dataUrl.split(",")[1]);
       const arr = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
@@ -237,6 +237,7 @@ function InvitePage() {
       toast.error((e as Error).message || "تعذّرت العملية");
     }
   }
+
 
   const coverBlock = coverImage ? (
     <Card className="overflow-hidden border-gold/40 shadow-2xl shadow-primary/10">
