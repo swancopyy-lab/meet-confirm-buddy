@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QRCard } from "@/components/QRCard";
 import { toast } from "sonner";
 import { CalendarDays, MapPin, CheckCircle2, XCircle, Sparkles, ShieldCheck, Download, Share2 } from "lucide-react";
-import QRCode from "qrcode";
+import { composeInvitationImage, companionsLabel } from "@/lib/compose-invitation";
 
 export const Route = createFileRoute("/i/$code")({
   head: ({ loaderData }) => {
@@ -190,33 +190,36 @@ function InvitePage() {
   // Size fonts relative to the invitation image container (matches designer canvas sizing)
   const numberFontCqw = Math.max(1.6, (qrSize * capFontSize) / 100);
   const textFontCqw = Math.max(1.4, (qrSize * capFontSize * 0.9) / 100);
+  const companionsText = companionsLabel(inv.rsvp_status, inv.companions);
+  const companionsOver = companions > maxCompanions;
+
 
   async function downloadShare(share: boolean) {
     try {
-      const canvas = document.createElement("canvas");
-      const size = 900;
-      canvas.width = size;
-      canvas.height = size + 220;
-      const ctx = canvas.getContext("2d")!;
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      const qrCanvas = document.createElement("canvas");
-      await QRCode.toCanvas(qrCanvas, scanUrl, { width: size, margin: 1, color: { dark: "#0F3D2E", light: "#FFFFFF" } });
-      ctx.drawImage(qrCanvas, 0, 0, size, size);
-      ctx.textAlign = "center";
-      let y = size + 30;
-      if (showNumber && displayNumber) {
-        ctx.fillStyle = numberColor || "#111";
-        ctx.font = `bold 72px ${captionFont || "sans-serif"}`;
-        ctx.fillText(String(displayNumber), size / 2, y + 60);
-        y += 90;
-      }
-      if (captionText) {
-        ctx.fillStyle = textColor || "#111";
-        ctx.font = `600 48px ${captionFont || "sans-serif"}`;
-        ctx.fillText(captionText, size / 2, y + 40);
-      }
-      const dataUrl = canvas.toDataURL("image/png");
+      const dataUrl = await composeInvitationImage({
+        imageUrl: invitationImage,
+        scanUrl,
+        number: displayNumber,
+        showNumber: showNumber && (ev2?.number_on_image ?? true),
+        captionText: captionText,
+        companionsText: companionsLabel(inv.rsvp_status, inv.companions),
+        numberColor: numberColor,
+        textColor: textColor,
+        fontFamily: captionFont,
+        align: capAlign,
+        fontWeight: capFontWeight,
+        fontSize: capFontSize,
+        showBox: capShowBox,
+        captionX: capX,
+        captionY: capY,
+        qrX,
+        qrY,
+        qrSize,
+        qrColor: (event as { qr_color?: string | null } | undefined)?.qr_color,
+        qrBgColor: (event as { qr_bg_color?: string | null } | undefined)?.qr_bg_color,
+        qrEcc: ((event as { qr_ecc?: string | null } | undefined)?.qr_ecc || "M") as "L" | "M" | "Q" | "H",
+        qrMargin: (event as { qr_margin?: number | null } | undefined)?.qr_margin ?? 1,
+      });
       const bin = atob(dataUrl.split(",")[1]);
       const arr = new Uint8Array(bin.length);
       for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
@@ -237,6 +240,7 @@ function InvitePage() {
       toast.error((e as Error).message || "تعذّرت العملية");
     }
   }
+
 
   const coverBlock = coverImage ? (
     <Card className="overflow-hidden border-gold/40 shadow-2xl shadow-primary/10">
@@ -303,7 +307,7 @@ function InvitePage() {
             <QRCard url={scanUrl} size={512} />
           </div>
         </div>
-        {(showNumber || captionText) && (
+        {(showNumber || captionText || companionsText) && (
           <div
             className="absolute px-2 py-1 leading-tight"
             style={{
@@ -342,8 +346,21 @@ function InvitePage() {
                 {captionText}
               </div>
             )}
+            {companionsText && (
+              <div
+                style={{
+                  color: textColor || "#111",
+                  fontSize: `${textFontCqw * 0.85}cqw`,
+                  fontWeight: capFontWeight,
+                  lineHeight: 1.15,
+                }}
+              >
+                {companionsText}
+              </div>
+            )}
           </div>
         )}
+
       </div>
       {(inv.guest_name || venueMap) && (
         <CardContent className="text-center py-3 space-y-2">
@@ -491,17 +508,29 @@ function InvitePage() {
                       id="comp"
                       type="number"
                       min={0}
-                      max={maxCompanions}
                       value={companions}
-                      onChange={(e) =>
-                        setCompanions(Math.max(0, Math.min(maxCompanions, Number(e.target.value) || 0)))
-                      }
+                      aria-invalid={companionsOver}
+                      className={companionsOver ? "border-destructive focus-visible:ring-destructive" : undefined}
+                      onChange={(e) => {
+                        const v = Math.max(0, Number(e.target.value) || 0);
+                        setCompanions(v);
+                        if (v > maxCompanions) {
+                          toast.error(`الحد الأقصى للمرافقين ${maxCompanions} — يرجى تقليل العدد`);
+                        }
+                      }}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      إجمالي الحضور: {companions + 1}
-                    </p>
+                    {companionsOver ? (
+                      <p className="text-xs font-medium text-destructive">
+                        تجاوزت الحد الأقصى ({maxCompanions}) — يرجى تقليل عدد المرافقين قبل الإرسال.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        إجمالي الحضور: {companions + 1}
+                      </p>
+                    )}
                   </div>
                 )}
+
 
                 {mode === "declined" && (
                   <div className="space-y-2 rounded-md border border-border bg-muted/40 p-4">
@@ -520,17 +549,22 @@ function InvitePage() {
                 {mode && (
                   <Button
                     className="w-full"
-                    disabled={mutation.isPending}
-                    onClick={() =>
+                    disabled={mutation.isPending || (mode === "attending" && companionsOver)}
+                    onClick={() => {
+                      if (mode === "attending" && companionsOver) {
+                        toast.error(`الحد الأقصى للمرافقين ${maxCompanions} — يرجى تقليل العدد`);
+                        return;
+                      }
                       mutation.mutate({
                         status: mode,
-                        companions: mode === "attending" ? Math.min(companions, maxCompanions) : undefined,
+                        companions: mode === "attending" ? companions : undefined,
                         apology_message: mode === "declined" ? apology : undefined,
-                      })
-                    }
+                      });
+                    }}
                   >
                     {mutation.isPending ? "جاري الإرسال..." : "إرسال الرد"}
                   </Button>
+
                 )}
 
                 {alreadyResponded && (

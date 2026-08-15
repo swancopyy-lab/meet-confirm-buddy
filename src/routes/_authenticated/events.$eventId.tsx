@@ -57,6 +57,8 @@ import {
   Eye,
 } from "lucide-react";
 import { QRCard } from "@/components/QRCard";
+import { composeInvitationImage, companionsLabel } from "@/lib/compose-invitation";
+
 
 export const Route = createFileRoute("/_authenticated/events/$eventId")({
   head: () => ({ meta: [{ title: "إدارة المناسبة" }] }),
@@ -551,125 +553,32 @@ async function composeInvitationDataUrl(
   number: number,
   origin: string,
 ): Promise<string> {
-  const scanUrl = `${origin}/s/${inv.scan_code}`;
-  const showNumber = !!ev.caption_show_number && !!ev.number_on_image;
-  const showBox = ev.caption_show_box !== false;
-  const captionText = (inv.caption_text || "").trim();
-  const numberColor = ev.caption_number_color || "#111111";
-  const textColor = ev.caption_text_color || "#111111";
-  const fontFamily = ev.caption_font_family || "sans-serif";
-  const align = (ev.caption_align || "center") as "left" | "center" | "right";
-  const weight = ev.caption_font_weight || 600;
-  const qrDark = ev.qr_color || "#0F3D2E";
-  const qrLight = ev.qr_bg_color || "#FFFFFF";
-  const qrEcc = (ev.qr_ecc || "M") as "L" | "M" | "Q" | "H";
-  const qrMargin = Number.isFinite(ev.qr_margin) ? ev.qr_margin : 1;
-
-  const imageUrl = inv.invitation_image_url || ev.invitation_image_url;
-  // Fallback: no invitation image → export QR + label only
-  if (!imageUrl) {
-    const canvas = document.createElement("canvas");
-    const size = 900;
-    canvas.width = size;
-    canvas.height = size + 200;
-    const ctx = canvas.getContext("2d")!;
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const qrCanvas = document.createElement("canvas");
-    await QRCode.toCanvas(qrCanvas, scanUrl, {
-      width: size,
-      margin: qrMargin,
-      errorCorrectionLevel: qrEcc,
-      color: { dark: qrDark, light: qrLight },
-    });
-    ctx.drawImage(qrCanvas, 0, 0, size, size);
-    ctx.textAlign = "center";
-    let y = size + 20;
-    if (showNumber) {
-      ctx.fillStyle = numberColor;
-      ctx.font = `bold 72px ${fontFamily}`;
-      ctx.fillText(String(number), size / 2, y + 60);
-      y += 90;
-    }
-    if (captionText) {
-      ctx.fillStyle = textColor;
-      ctx.font = `${weight} 48px ${fontFamily}`;
-      ctx.fillText(captionText, size / 2, y + 40);
-    }
-    return canvas.toDataURL("image/png");
-  }
-  const img = new Image();
-  img.crossOrigin = "anonymous";
-  await new Promise<void>((resolve, reject) => {
-    img.onload = () => resolve();
-    img.onerror = () => reject(new Error("تعذّر تحميل صورة الدعوة"));
-    img.src = imageUrl as string;
+  return composeInvitationImage({
+    imageUrl: inv.invitation_image_url || ev.invitation_image_url,
+    scanUrl: `${origin}/s/${inv.scan_code}`,
+    number,
+    showNumber: !!ev.caption_show_number && !!ev.number_on_image,
+    captionText: inv.caption_text,
+    companionsText: companionsLabel(inv.rsvp_status, inv.companions),
+    numberColor: ev.caption_number_color,
+    textColor: ev.caption_text_color,
+    fontFamily: ev.caption_font_family,
+    align: (ev.caption_align || "center") as "left" | "center" | "right",
+    fontWeight: ev.caption_font_weight,
+    fontSize: ev.caption_font_size,
+    showBox: ev.caption_show_box !== false,
+    captionX: ev.caption_x,
+    captionY: ev.caption_y,
+    qrX: ev.qr_x,
+    qrY: ev.qr_y,
+    qrSize: ev.qr_size,
+    qrColor: ev.qr_color,
+    qrBgColor: ev.qr_bg_color,
+    qrEcc: (ev.qr_ecc || "M") as "L" | "M" | "Q" | "H",
+    qrMargin: ev.qr_margin,
   });
-  const w = img.naturalWidth;
-  const h = img.naturalHeight;
-  const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
-  const ctx = canvas.getContext("2d")!;
-  ctx.drawImage(img, 0, 0, w, h);
-
-  const qrSizePx = (Number(ev.qr_size ?? 22) / 100) * w;
-  const qrCx = (Number(ev.qr_x ?? 50) / 100) * w;
-  const qrCy = (Number(ev.qr_y ?? 80) / 100) * h;
-  const qrX = qrCx - qrSizePx / 2;
-  const qrY = qrCy - qrSizePx / 2;
-  const pad = qrSizePx * 0.06;
-
-  // Draw white plate behind QR only if bg not transparent-ish
-  ctx.fillStyle = qrLight;
-  ctx.fillRect(qrX - pad, qrY - pad, qrSizePx + pad * 2, qrSizePx + pad * 2);
-
-  const qrCanvas = document.createElement("canvas");
-  await QRCode.toCanvas(qrCanvas, scanUrl, {
-    width: Math.max(256, Math.round(qrSizePx)),
-    margin: qrMargin,
-    errorCorrectionLevel: qrEcc,
-    color: { dark: qrDark, light: qrLight },
-  });
-  ctx.drawImage(qrCanvas, qrX, qrY, qrSizePx, qrSizePx);
-
-  // Caption block positioned by caption_x / caption_y (percent of image)
-  const numberFontSize = Math.max(14, Math.round(qrSizePx * ((ev.caption_font_size ?? 28) / 100)));
-  const textFontSize = Math.max(14, Math.round(qrSizePx * ((ev.caption_font_size ?? 28) / 100) * 0.9));
-  const capCx = (Number(ev.caption_x ?? 50) / 100) * w;
-  const capCy = (Number(ev.caption_y ?? 92) / 100) * h;
-  ctx.textAlign = align === "left" ? "left" : align === "right" ? "right" : "center";
-  ctx.textBaseline = "middle";
-
-  const lines: Array<{ text: string; color: string; size: number; weight: number | "bold" }> = [];
-  if (showNumber) lines.push({ text: String(number), color: numberColor, size: numberFontSize, weight: "bold" });
-  if (captionText) lines.push({ text: captionText, color: textColor, size: textFontSize, weight });
-
-  if (lines.length > 0) {
-    const gap = 8;
-    const totalH = lines.reduce((s, l) => s + l.size + gap, -gap);
-    let cy = capCy - totalH / 2 + lines[0].size / 2;
-    for (const l of lines) {
-      ctx.font = `${l.weight} ${l.size}px ${fontFamily}`;
-      if (showBox) {
-        const tw = ctx.measureText(l.text).width;
-        const padX = 12;
-        const padY = 6;
-        const boxW = tw + padX * 2;
-        const boxH = l.size + padY * 2;
-        const boxX = align === "left" ? capCx : align === "right" ? capCx - boxW : capCx - boxW / 2;
-        const boxY = cy - boxH / 2;
-        ctx.fillStyle = "#fff";
-        ctx.fillRect(boxX, boxY, boxW, boxH);
-      }
-      ctx.fillStyle = l.color;
-      ctx.fillText(l.text, capCx, cy);
-      cy += l.size + gap;
-    }
-  }
-
-  return canvas.toDataURL("image/png");
 }
+
 
 
 function dataUrlToBlob(dataUrl: string): Blob {
@@ -1444,7 +1353,20 @@ function InvitationCard({
               {inv.caption_text}
             </p>
           )}
+          {companionsLabel(inv.rsvp_status, inv.companions) && (
+            <p
+              className="text-sm"
+              style={{
+                color: ev.caption_text_color || undefined,
+                fontFamily: ev.caption_font_family || undefined,
+                fontWeight: ev.caption_font_weight || undefined,
+              }}
+            >
+              {companionsLabel(inv.rsvp_status, inv.companions)}
+            </p>
+          )}
           <p className="font-mono text-xs tracking-widest text-muted-foreground">{number} · {inv.code}</p>
+
         </div>
         <div className="grid grid-cols-3 gap-2 print:hidden">
           <Button variant="outline" size="sm" disabled={downloading} onClick={downloadCard}>
