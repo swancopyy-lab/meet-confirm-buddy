@@ -508,17 +508,29 @@ function InvitePage() {
                       id="comp"
                       type="number"
                       min={0}
-                      max={maxCompanions}
                       value={companions}
-                      onChange={(e) =>
-                        setCompanions(Math.max(0, Math.min(maxCompanions, Number(e.target.value) || 0)))
-                      }
+                      aria-invalid={companionsOver}
+                      className={companionsOver ? "border-destructive focus-visible:ring-destructive" : undefined}
+                      onChange={(e) => {
+                        const v = Math.max(0, Number(e.target.value) || 0);
+                        setCompanions(v);
+                        if (v > maxCompanions) {
+                          toast.error(`الحد الأقصى للمرافقين ${maxCompanions} — يرجى تقليل العدد`);
+                        }
+                      }}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      إجمالي الحضور: {companions + 1}
-                    </p>
+                    {companionsOver ? (
+                      <p className="text-xs font-medium text-destructive">
+                        تجاوزت الحد الأقصى ({maxCompanions}) — يرجى تقليل عدد المرافقين قبل الإرسال.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        إجمالي الحضور: {companions + 1}
+                      </p>
+                    )}
                   </div>
                 )}
+
 
                 {mode === "declined" && (
                   <div className="space-y-2 rounded-md border border-border bg-muted/40 p-4">
