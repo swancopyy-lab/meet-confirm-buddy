@@ -549,17 +549,22 @@ function InvitePage() {
                 {mode && (
                   <Button
                     className="w-full"
-                    disabled={mutation.isPending}
-                    onClick={() =>
+                    disabled={mutation.isPending || (mode === "attending" && companionsOver)}
+                    onClick={() => {
+                      if (mode === "attending" && companionsOver) {
+                        toast.error(`الحد الأقصى للمرافقين ${maxCompanions} — يرجى تقليل العدد`);
+                        return;
+                      }
                       mutation.mutate({
                         status: mode,
-                        companions: mode === "attending" ? Math.min(companions, maxCompanions) : undefined,
+                        companions: mode === "attending" ? companions : undefined,
                         apology_message: mode === "declined" ? apology : undefined,
-                      })
-                    }
+                      });
+                    }}
                   >
                     {mutation.isPending ? "جاري الإرسال..." : "إرسال الرد"}
                   </Button>
+
                 )}
 
                 {alreadyResponded && (
