@@ -1353,7 +1353,20 @@ function InvitationCard({
               {inv.caption_text}
             </p>
           )}
+          {companionsLabel(inv.rsvp_status, inv.companions) && (
+            <p
+              className="text-sm"
+              style={{
+                color: ev.caption_text_color || undefined,
+                fontFamily: ev.caption_font_family || undefined,
+                fontWeight: ev.caption_font_weight || undefined,
+              }}
+            >
+              {companionsLabel(inv.rsvp_status, inv.companions)}
+            </p>
+          )}
           <p className="font-mono text-xs tracking-widest text-muted-foreground">{number} · {inv.code}</p>
+
         </div>
         <div className="grid grid-cols-3 gap-2 print:hidden">
           <Button variant="outline" size="sm" disabled={downloading} onClick={downloadCard}>
