@@ -1030,6 +1030,7 @@ function InvitationDesigner({
                 onPointerMove={handleMove}
                 onPointerUp={() => setDragging(null)}
                 onPointerLeave={() => setDragging(null)}
+                style={{ containerType: "inline-size" }}
                 className="relative mx-auto w-full max-w-md overflow-hidden rounded-md border border-gold/30 select-none touch-none"
               >
                 <img src={ev.invitation_image_url} alt="معاينة" className="block w-full h-auto" draggable={false} />
@@ -1060,12 +1061,12 @@ function InvitationDesigner({
                     }}
                   >
                     {showNumber && (
-                      <div style={{ color: numberColor, fontSize: `${Math.max(10, fontSize * 0.4)}px`, fontWeight: 700, lineHeight: 1.2 }}>
+                      <div style={{ color: numberColor, fontSize: `${Math.max(1.6, (qrSize * fontSize) / 100)}cqw`, fontWeight: 700, lineHeight: 1.1 }}>
                         {sampleNumber}
                       </div>
                     )}
                     {sampleText && (
-                      <div style={{ color: textColor, fontSize: `${Math.max(9, fontSize * 0.35)}px`, fontWeight: weight, lineHeight: 1.2 }}>
+                      <div style={{ color: textColor, fontSize: `${Math.max(1.4, (qrSize * fontSize * 0.9) / 100)}cqw`, fontWeight: weight, lineHeight: 1.15 }}>
                         {sampleText}
                       </div>
                     )}
@@ -2516,6 +2517,7 @@ function CoverDesigner({
     setCapY(Math.max(0, Math.min(100, ((e.clientY - rect.top) / rect.height) * 100)));
   }
 
+  const coverQrSize = Number((ev as { qr_size?: number | null }).qr_size ?? 22);
   const captionTransform =
     align === "left" ? "translate(0, -50%)" : align === "right" ? "translate(-100%, -50%)" : "translate(-50%, -50%)";
 
@@ -2562,6 +2564,7 @@ function CoverDesigner({
               onPointerMove={handleMove}
               onPointerUp={() => setDragging(false)}
               onPointerLeave={() => setDragging(false)}
+              style={{ containerType: "inline-size" }}
               className="relative mx-auto w-full max-w-md overflow-hidden rounded-md border border-gold/30 select-none touch-none"
             >
               <img src={ev.cover_image_url} alt="معاينة" className="block w-full h-auto" draggable={false} />
@@ -2580,11 +2583,11 @@ function CoverDesigner({
                 }}
               >
                 {showNumber && (
-                  <div style={{ color: numberColor, fontSize: `${Math.max(10, fontSize * 0.4)}px`, fontWeight: 700, lineHeight: 1.2 }}>
+                  <div style={{ color: numberColor, fontSize: `${Math.max(1.6, (coverQrSize * fontSize) / 100)}cqw`, fontWeight: 700, lineHeight: 1.1 }}>
                     {sampleNumber}
                   </div>
                 )}
-                <div style={{ color: textColor, fontSize: `${Math.max(9, fontSize * 0.35)}px`, fontWeight: weight, lineHeight: 1.2 }}>
+                <div style={{ color: textColor, fontSize: `${Math.max(1.4, (coverQrSize * fontSize * 0.9) / 100)}cqw`, fontWeight: weight, lineHeight: 1.15 }}>
                   {sampleText}
                 </div>
               </div>
