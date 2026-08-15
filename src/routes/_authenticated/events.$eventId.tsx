@@ -57,6 +57,8 @@ import {
   Eye,
 } from "lucide-react";
 import { QRCard } from "@/components/QRCard";
+import { composeInvitationImage, companionsLabel } from "@/lib/compose-invitation";
+
 
 export const Route = createFileRoute("/_authenticated/events/$eventId")({
   head: () => ({ meta: [{ title: "إدارة المناسبة" }] }),
