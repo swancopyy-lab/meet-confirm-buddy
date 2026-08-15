@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QRCard } from "@/components/QRCard";
 import { toast } from "sonner";
 import { CalendarDays, MapPin, CheckCircle2, XCircle, Sparkles, ShieldCheck, Download, Share2 } from "lucide-react";
-import QRCode from "qrcode";
+import { composeInvitationImage, companionsLabel } from "@/lib/compose-invitation";
 
 export const Route = createFileRoute("/i/$code")({
   head: ({ loaderData }) => {
