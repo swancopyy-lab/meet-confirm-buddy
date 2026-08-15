@@ -1061,12 +1061,12 @@ function InvitationDesigner({
                     }}
                   >
                     {showNumber && (
-                      <div style={{ color: numberColor, fontSize: `${Math.max(10, fontSize * 0.4)}px`, fontWeight: 700, lineHeight: 1.2 }}>
+                      <div style={{ color: numberColor, fontSize: `${Math.max(1.6, (qrSize * fontSize) / 100)}cqw`, fontWeight: 700, lineHeight: 1.1 }}>
                         {sampleNumber}
                       </div>
                     )}
                     {sampleText && (
-                      <div style={{ color: textColor, fontSize: `${Math.max(9, fontSize * 0.35)}px`, fontWeight: weight, lineHeight: 1.2 }}>
+                      <div style={{ color: textColor, fontSize: `${Math.max(1.4, (qrSize * fontSize * 0.9) / 100)}cqw`, fontWeight: weight, lineHeight: 1.15 }}>
                         {sampleText}
                       </div>
                     )}
