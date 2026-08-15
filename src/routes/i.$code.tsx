@@ -304,7 +304,7 @@ function InvitePage() {
             <QRCard url={scanUrl} size={512} />
           </div>
         </div>
-        {(showNumber || captionText) && (
+        {(showNumber || captionText || companionsText) && (
           <div
             className="absolute px-2 py-1 leading-tight"
             style={{
@@ -343,8 +343,21 @@ function InvitePage() {
                 {captionText}
               </div>
             )}
+            {companionsText && (
+              <div
+                style={{
+                  color: textColor || "#111",
+                  fontSize: `${textFontCqw * 0.85}cqw`,
+                  fontWeight: capFontWeight,
+                  lineHeight: 1.15,
+                }}
+              >
+                {companionsText}
+              </div>
+            )}
           </div>
         )}
+
       </div>
       {(inv.guest_name || venueMap) && (
         <CardContent className="text-center py-3 space-y-2">
