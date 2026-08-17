@@ -2751,6 +2751,7 @@ function CoverDesigner({
             cover_caption_number_color: numberColor,
             cover_caption_show_box: showBox,
             cover_caption_show_number: showNumber,
+            cover_show_caption: showText,
             default_max_companions: maxComp,
             default_scan_limit: scanLimit,
           })}>
