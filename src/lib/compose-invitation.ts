@@ -31,6 +31,7 @@ export async function composeInvitationImage(o: ComposeOptions): Promise<string>
   const showNumber = !!o.showNumber && o.number != null;
   const showBox = o.showBox !== false;
   const captionText = (o.captionText || "").trim();
+  const nameText = (o.nameText || "").trim();
   const companionsText = (o.companionsText || "").trim();
   const numberColor = o.numberColor || "#111111";
   const textColor = o.textColor || "#111111";
@@ -72,6 +73,12 @@ export async function composeInvitationImage(o: ComposeOptions): Promise<string>
       ctx.font = `${weight} 48px ${fontFamily}`;
       ctx.fillText(captionText, size / 2, y + 40);
       y += 70;
+    }
+    if (nameText) {
+      ctx.fillStyle = textColor;
+      ctx.font = `${weight} 44px ${fontFamily}`;
+      ctx.fillText(nameText, size / 2, y + 40);
+      y += 66;
     }
     if (companionsText) {
       ctx.fillStyle = textColor;
@@ -125,6 +132,7 @@ export async function composeInvitationImage(o: ComposeOptions): Promise<string>
   const lines: Array<{ text: string; color: string; size: number; weight: number | "bold" }> = [];
   if (showNumber) lines.push({ text: String(o.number), color: numberColor, size: numberFontSize, weight: "bold" });
   if (captionText) lines.push({ text: captionText, color: textColor, size: textFontSize, weight });
+  if (nameText) lines.push({ text: nameText, color: textColor, size: textFontSize, weight });
   if (companionsText)
     lines.push({ text: companionsText, color: textColor, size: Math.round(textFontSize * 0.85), weight });
 
