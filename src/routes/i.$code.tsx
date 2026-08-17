@@ -254,7 +254,7 @@ function InvitePage() {
     <Card className="overflow-hidden border-gold/40 shadow-2xl shadow-primary/10">
       <div className="relative w-full" style={{ containerType: "inline-size" }}>
         <img src={coverImage} alt="دعوة" className="block w-full h-auto" />
-        {((coverShowNumber && coverShowCaption) || coverText) && (
+        {(coverShowNumber || coverText) && (
           <div
             className="absolute px-2 py-1 leading-tight"
             style={{
