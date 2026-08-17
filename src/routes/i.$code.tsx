@@ -149,6 +149,9 @@ function InvitePage() {
     cover_caption_number_color?: string | null;
     cover_caption_show_box?: boolean;
     cover_caption_show_number?: boolean;
+    cover_show_caption?: boolean;
+    caption_show_name?: boolean;
+    caption_show_companions?: boolean;
     default_max_companions?: number | null;
   }) | undefined;
   const inv2 = inv as typeof inv & { caption_text?: string | null; display_number?: number | null; invitation_image_url?: string | null; max_companions?: number | null };
@@ -186,11 +189,15 @@ function InvitePage() {
   const coverShowNumber = !!ev2?.cover_caption_show_number;
   const coverTextCqw = Math.max(1.4, (qrSize * coverFontSize * 0.9) / 100);
   const coverNumberCqw = Math.max(1.6, (qrSize * coverFontSize) / 100);
-  const coverText = inv2.caption_text || inv.guest_name || "";
+  const coverShowCaption = ev2?.cover_show_caption !== false;
+  const coverText = coverShowCaption ? (inv2.caption_text || inv.guest_name || "") : "";
+  const showGuestName = !!ev2?.caption_show_name;
+  const showCompanionsOnImage = ev2?.caption_show_companions !== false;
+  const guestNameText = showGuestName ? (inv.guest_name || "") : "";
   // Size fonts relative to the invitation image container (matches designer canvas sizing)
   const numberFontCqw = Math.max(1.6, (qrSize * capFontSize) / 100);
   const textFontCqw = Math.max(1.4, (qrSize * capFontSize * 0.9) / 100);
-  const companionsText = companionsLabel(inv.rsvp_status, inv.companions);
+  const companionsText = showCompanionsOnImage ? companionsLabel(inv.rsvp_status, inv.companions) : "";
   const companionsOver = companions > maxCompanions;
 
 
@@ -202,7 +209,8 @@ function InvitePage() {
         number: displayNumber,
         showNumber: showNumber && (ev2?.number_on_image ?? true),
         captionText: captionText,
-        companionsText: companionsLabel(inv.rsvp_status, inv.companions),
+        nameText: guestNameText,
+        companionsText: companionsText,
         numberColor: numberColor,
         textColor: textColor,
         fontFamily: captionFont,
@@ -246,7 +254,7 @@ function InvitePage() {
     <Card className="overflow-hidden border-gold/40 shadow-2xl shadow-primary/10">
       <div className="relative w-full" style={{ containerType: "inline-size" }}>
         <img src={coverImage} alt="دعوة" className="block w-full h-auto" />
-        {(coverShowNumber || coverText) && (
+        {((coverShowNumber && coverShowCaption) || coverText) && (
           <div
             className="absolute px-2 py-1 leading-tight"
             style={{
@@ -307,7 +315,7 @@ function InvitePage() {
             <QRCard url={scanUrl} size={512} />
           </div>
         </div>
-        {(showNumber || captionText || companionsText) && (
+        {(showNumber || captionText || guestNameText || companionsText) && (
           <div
             className="absolute px-2 py-1 leading-tight"
             style={{
@@ -344,6 +352,18 @@ function InvitePage() {
                 }}
               >
                 {captionText}
+              </div>
+            )}
+            {guestNameText && (
+              <div
+                style={{
+                  color: textColor || "#111",
+                  fontSize: `${textFontCqw}cqw`,
+                  fontWeight: capFontWeight,
+                  lineHeight: 1.15,
+                }}
+              >
+                {guestNameText}
               </div>
             )}
             {companionsText && (
