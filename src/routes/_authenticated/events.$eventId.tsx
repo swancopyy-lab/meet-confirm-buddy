@@ -34,6 +34,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import JSZip from "jszip";
+import * as XLSX from "xlsx";
 import {
   Copy,
   Plus,
@@ -56,6 +57,8 @@ import {
   Share2,
   Pencil,
   Eye,
+  RefreshCw,
+  FileSpreadsheet,
 } from "lucide-react";
 import { QRCard } from "@/components/QRCard";
 import { composeInvitationImage, companionsLabel } from "@/lib/compose-invitation";
@@ -454,6 +457,50 @@ function BulkCreateForm({
   const [mode, setMode] = useState<"count" | "list">("count");
   const [count, setCount] = useState(10);
   const [list, setList] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function importSheet(file: File) {
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheetName = wb.SheetNames[0];
+      if (!sheetName) throw new Error("الملف فارغ");
+      const ws = wb.Sheets[sheetName];
+      if (!ws) throw new Error("الملف فارغ");
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: false, raw: false });
+      const nameKeys = ["اسم", "الاسم", "المدعو", "name", "guest"];
+      const phoneKeys = ["جوال", "الجوال", "جوّال", "رقم", "هاتف", "phone", "mobile", "number"];
+      const out: string[] = [];
+      let nameIdx = 0;
+      let phoneIdx = 1;
+      let start = 0;
+      const first = (rows[0] ?? []).map((c) => String(c ?? "").trim().toLowerCase());
+      const isHeader = first.some((c) => [...nameKeys, ...phoneKeys].some((k) => c.includes(k)));
+      if (isHeader) {
+        start = 1;
+        const ni = first.findIndex((c) => nameKeys.some((k) => c.includes(k)));
+        const pi = first.findIndex((c) => phoneKeys.some((k) => c.includes(k)));
+        if (ni >= 0) nameIdx = ni;
+        if (pi >= 0) phoneIdx = pi;
+      }
+      for (let r = start; r < rows.length; r++) {
+        const row = rows[r] ?? [];
+        const nm = String(row[nameIdx] ?? "").trim();
+        const ph = String(row[phoneIdx] ?? "").trim();
+        if (!nm && !ph) continue;
+        out.push(`${nm}${ph ? `, ${normalizePhone(ph)}` : ""}`);
+      }
+      if (out.length === 0) {
+        toast.error("لم أجد أسماء في الملف");
+        return;
+      }
+      setMode("list");
+      setList((prev) => (prev.trim() ? prev.trimEnd() + "\n" + out.join("\n") : out.join("\n")));
+      toast.success(`تم استخراج ${out.length} مدعو من الملف`);
+    } catch (err) {
+      toast.error((err as Error).message || "تعذّرت قراءة الملف");
+    }
+  }
 
   function submit() {
     if (mode === "count") {
@@ -499,6 +546,20 @@ function BulkCreateForm({
         <div className="space-y-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <Label htmlFor="list">قائمة (اسم, رقم الجوال) لكل مدعو سطر</Label>
+            <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+              <FileSpreadsheet className="size-4" /> استيراد من ملف إكسل
+            </Button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                e.target.value = "";
+                if (f) importSheet(f);
+              }}
+            />
             {contactsPickerAvailable() && (
               <Button
                 type="button"
