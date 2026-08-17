@@ -9,6 +9,7 @@ import {
   clearInvitationImage,
   createCollaboratorAccount,
   createInvitations,
+  resetInvitation,
   deleteInvitation,
   getEvent,
   listCollaborators,
@@ -153,6 +154,7 @@ function EventEditor() {
   const createInv = useServerFn(createInvitations);
   const delInv = useServerFn(deleteInvitation);
   const updDetails = useServerFn(updateInvitationDetails);
+  const resetInv = useServerFn(resetInvitation);
   const uploadImg = useServerFn(uploadEventImage);
   const clearImg = useServerFn(clearEventImage);
 
@@ -199,6 +201,16 @@ function EventEditor() {
     mutationFn: (v: { id: string; guest_name?: string; phone?: string; caption_text?: string; max_companions?: number | null; scan_limit?: number }) =>
       updDetails({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["invitations", eventId] }),
+  });
+
+  const resetMut = useMutation({
+    mutationFn: (v: { id: string; guest_name?: string; phone?: string; new_code?: boolean }) =>
+      resetInv({ data: v }),
+    onSuccess: () => {
+      toast.success("تمت إعادة تفعيل الدعوة — يمكنك إرسالها لضيف آخر");
+      qc.invalidateQueries({ queryKey: ["invitations", eventId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const uploadMut = useMutation({
@@ -314,6 +326,7 @@ function EventEditor() {
                 canDelete={isHost}
                 onDelete={() => delMut.mutate(inv.id)}
                 onSaveDetails={(v) => detailsMut.mutate({ id: inv.id, ...v })}
+                onReuse={(v) => resetMut.mutate({ id: inv.id, ...v })}
               />
             ))}
           </div>
@@ -1268,6 +1281,7 @@ function InvitationCard({
   canDelete,
   onDelete,
   onSaveDetails,
+  onReuse,
 }: {
   inv: Invitation;
   ev: EventRow;
@@ -1276,6 +1290,7 @@ function InvitationCard({
   canDelete: boolean;
   onDelete: () => void;
   onSaveDetails: (v: { guest_name?: string; phone?: string; caption_text?: string; max_companions?: number | null; scan_limit?: number }) => void;
+  onReuse?: (v: { guest_name?: string; phone?: string; new_code?: boolean }) => void;
 }) {
   const rsvpUrl = `${origin}/i/${inv.code}`;
   const scanUrl = `${origin}/s/${inv.scan_code}`;
@@ -1287,6 +1302,10 @@ function InvitationCard({
   const [showWa, setShowWa] = useState(false);
   const [waMsg, setWaMsg] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [reuseOpen, setReuseOpen] = useState(false);
+  const [reuseName, setReuseName] = useState("");
+  const [reusePhone, setReusePhone] = useState("");
+  const [reuseNewCode, setReuseNewCode] = useState(false);
 
   function copy(url: string, label: string) {
     navigator.clipboard.writeText(url);
@@ -1500,6 +1519,46 @@ function InvitationCard({
         {inv.guest_name && <p className="hidden print:block text-center text-sm">{inv.guest_name}</p>}
         {inv.apology_message && (
           <p className="rounded bg-muted/50 p-2 text-xs text-muted-foreground print:hidden">✉️ {inv.apology_message}</p>
+        )}
+        {inv.rsvp_status === "declined" && onReuse && (
+          <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 print:hidden">
+            <p className="text-xs text-muted-foreground">
+              اعتذر المدعو — يمكنك إعادة استخدام هذه البطاقة وإرسالها لضيف آخر.
+            </p>
+            {!reuseOpen ? (
+              <Button size="sm" variant="outline" className="w-full" onClick={() => setReuseOpen(true)}>
+                <RefreshCw className="size-3.5" /> إعادة استخدام لضيف آخر
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <Input placeholder="اسم الضيف الجديد" value={reuseName} onChange={(e) => setReuseName(e.target.value)} className="h-8 text-xs" />
+                <Input placeholder="جواله (اختياري)" value={reusePhone} onChange={(e) => setReusePhone(e.target.value)} dir="ltr" className="h-8 text-xs" />
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input type="checkbox" checked={reuseNewCode} onChange={(e) => setReuseNewCode(e.target.checked)} />
+                  توليد رابط وباركود جديد (يُلغي القديم)
+                </label>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      onReuse({
+                        guest_name: reuseName.trim() || undefined,
+                        phone: reusePhone.trim() ? normalizePhone(reusePhone) : undefined,
+                        new_code: reuseNewCode,
+                      });
+                      setReuseOpen(false);
+                      setReuseName("");
+                      setReusePhone("");
+                    }}
+                  >
+                    تأكيد
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setReuseOpen(false)}>إلغاء</Button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
