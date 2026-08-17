@@ -766,6 +766,64 @@ export const deleteInvitation = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+// Reset an invitation so it can be reused for another guest (e.g. after an apology).
+export const resetInvitation = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        id: z.string().uuid(),
+        guest_name: z.string().trim().max(120).optional().nullable(),
+        phone: z.string().trim().max(30).optional().nullable(),
+        new_code: z.boolean().optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId, claims } = context;
+    const { data: inv, error: invErr } = await supabase
+      .from("invitations")
+      .select("id, host_id, event_id")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (invErr) throw new Error(invErr.message);
+    if (!inv) throw new Error("لم يتم العثور على الدعوة");
+    let allowed = inv.host_id === userId;
+    if (!allowed) {
+      const email = (claims as { email?: string } | null)?.email?.toLowerCase();
+      if (email) {
+        const { data: collab } = await supabase
+          .from("event_collaborators")
+          .select("can_send_invitations")
+          .eq("event_id", inv.event_id)
+          .eq("email", email)
+          .maybeSingle();
+        if (collab?.can_send_invitations) allowed = true;
+      }
+    }
+    if (!allowed) throw new Error("لا تملك صلاحية إعادة الاستخدام");
+
+    const patch: Record<string, unknown> = {
+      rsvp_status: "pending",
+      companions: 0,
+      apology_message: null,
+      responded_at: null,
+      scanned_at: null,
+      scanned_by: null,
+      scan_count: 0,
+    };
+    if (data.guest_name !== undefined) patch['guest_name'] = data.guest_name || null;
+    if (data.phone !== undefined) patch['phone'] = data.phone || null;
+    if (data.new_code) {
+      patch['code'] = generateCode();
+      patch['scan_code'] = generateScanCode();
+    }
+    const { error } = await supabase.from("invitations").update(patch).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 // ---------- Door check-in (camera scan, authed) ----------
 
 export const checkInByScanCode = createServerFn({ method: "POST" })
