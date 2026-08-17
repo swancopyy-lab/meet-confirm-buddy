@@ -803,7 +803,19 @@ export const resetInvitation = createServerFn({ method: "POST" })
     }
     if (!allowed) throw new Error("لا تملك صلاحية إعادة الاستخدام");
 
-    const patch: Record<string, unknown> = {
+    const patch: {
+      rsvp_status: "pending";
+      companions: number;
+      apology_message: null;
+      responded_at: null;
+      scanned_at: null;
+      scanned_by: null;
+      scan_count: number;
+      guest_name?: string | null;
+      phone?: string | null;
+      code?: string;
+      scan_code?: string;
+    } = {
       rsvp_status: "pending",
       companions: 0,
       apology_message: null,
@@ -812,11 +824,11 @@ export const resetInvitation = createServerFn({ method: "POST" })
       scanned_by: null,
       scan_count: 0,
     };
-    if (data.guest_name !== undefined) patch['guest_name'] = data.guest_name || null;
-    if (data.phone !== undefined) patch['phone'] = data.phone || null;
+    if (data.guest_name !== undefined) patch.guest_name = data.guest_name || null;
+    if (data.phone !== undefined) patch.phone = data.phone || null;
     if (data.new_code) {
-      patch['code'] = generateCode();
-      patch['scan_code'] = generateScanCode();
+      patch.code = generateCode();
+      patch.scan_code = generateScanCode();
     }
     const { error } = await supabase.from("invitations").update(patch).eq("id", data.id);
     if (error) throw new Error(error.message);
