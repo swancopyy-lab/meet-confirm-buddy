@@ -120,8 +120,6 @@ type EventRow = {
   cover_caption_show_box: boolean;
   cover_caption_show_number: boolean;
   cover_show_caption: boolean;
-  caption_show_name: boolean;
-  caption_show_companions: boolean;
   default_max_companions: number;
   default_scan_limit: number;
 };
