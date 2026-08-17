@@ -65,6 +65,8 @@ export type Database = {
           caption_font_weight: number
           caption_number_color: string
           caption_show_box: boolean
+          caption_show_companions: boolean
+          caption_show_name: boolean
           caption_show_number: boolean
           caption_text_color: string
           caption_x: number
@@ -81,6 +83,7 @@ export type Database = {
           cover_caption_x: number
           cover_caption_y: number
           cover_image_url: string | null
+          cover_show_caption: boolean
           created_at: string
           default_max_companions: number
           default_scan_limit: number
@@ -114,6 +117,8 @@ export type Database = {
           caption_font_weight?: number
           caption_number_color?: string
           caption_show_box?: boolean
+          caption_show_companions?: boolean
+          caption_show_name?: boolean
           caption_show_number?: boolean
           caption_text_color?: string
           caption_x?: number
@@ -130,6 +135,7 @@ export type Database = {
           cover_caption_x?: number
           cover_caption_y?: number
           cover_image_url?: string | null
+          cover_show_caption?: boolean
           created_at?: string
           default_max_companions?: number
           default_scan_limit?: number
@@ -163,6 +169,8 @@ export type Database = {
           caption_font_weight?: number
           caption_number_color?: string
           caption_show_box?: boolean
+          caption_show_companions?: boolean
+          caption_show_name?: boolean
           caption_show_number?: boolean
           caption_text_color?: string
           caption_x?: number
@@ -179,6 +187,7 @@ export type Database = {
           cover_caption_x?: number
           cover_caption_y?: number
           cover_image_url?: string | null
+          cover_show_caption?: boolean
           created_at?: string
           default_max_companions?: number
           default_scan_limit?: number
