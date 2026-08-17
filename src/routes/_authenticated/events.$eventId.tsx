@@ -526,13 +526,27 @@ function BulkCreateForm({
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant={mode === "count" ? "default" : "outline"} onClick={() => setMode("count")}>
           عدد فقط
         </Button>
         <Button type="button" size="sm" variant={mode === "list" ? "default" : "outline"} onClick={() => setMode("list")}>
           قائمة أسماء + جوالات
         </Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+          <FileSpreadsheet className="size-4" /> ملف إكسل
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) importSheet(f);
+          }}
+        />
       </div>
       {mode === "count" ? (
         <div className="flex flex-wrap items-end gap-3">
@@ -546,20 +560,6 @@ function BulkCreateForm({
         <div className="space-y-2">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <Label htmlFor="list">قائمة (اسم, رقم الجوال) لكل مدعو سطر</Label>
-            <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
-              <FileSpreadsheet className="size-4" /> استيراد من ملف إكسل
-            </Button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".xlsx,.xls,.csv"
-              className="hidden"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                e.target.value = "";
-                if (f) importSheet(f);
-              }}
-            />
             {contactsPickerAvailable() && (
               <Button
                 type="button"
