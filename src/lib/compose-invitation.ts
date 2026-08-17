@@ -6,6 +6,7 @@ export type ComposeOptions = {
   number?: number | null;
   showNumber?: boolean;
   captionText?: string | null;
+  nameText?: string | null;
   companionsText?: string | null;
   numberColor?: string | null;
   textColor?: string | null;
