@@ -9,6 +9,7 @@ import {
   clearInvitationImage,
   createCollaboratorAccount,
   createInvitations,
+  resetInvitation,
   deleteInvitation,
   getEvent,
   listCollaborators,
@@ -33,6 +34,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "sonner";
 import QRCode from "qrcode";
 import JSZip from "jszip";
+import * as XLSX from "xlsx";
 import {
   Copy,
   Plus,
@@ -55,6 +57,8 @@ import {
   Share2,
   Pencil,
   Eye,
+  RefreshCw,
+  FileSpreadsheet,
 } from "lucide-react";
 import { QRCard } from "@/components/QRCard";
 import { composeInvitationImage, companionsLabel } from "@/lib/compose-invitation";
@@ -153,6 +157,7 @@ function EventEditor() {
   const createInv = useServerFn(createInvitations);
   const delInv = useServerFn(deleteInvitation);
   const updDetails = useServerFn(updateInvitationDetails);
+  const resetInv = useServerFn(resetInvitation);
   const uploadImg = useServerFn(uploadEventImage);
   const clearImg = useServerFn(clearEventImage);
 
@@ -199,6 +204,16 @@ function EventEditor() {
     mutationFn: (v: { id: string; guest_name?: string; phone?: string; caption_text?: string; max_companions?: number | null; scan_limit?: number }) =>
       updDetails({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["invitations", eventId] }),
+  });
+
+  const resetMut = useMutation({
+    mutationFn: (v: { id: string; guest_name?: string; phone?: string; new_code?: boolean }) =>
+      resetInv({ data: v }),
+    onSuccess: () => {
+      toast.success("تمت إعادة تفعيل الدعوة — يمكنك إرسالها لضيف آخر");
+      qc.invalidateQueries({ queryKey: ["invitations", eventId] });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const uploadMut = useMutation({
@@ -314,6 +329,7 @@ function EventEditor() {
                 canDelete={isHost}
                 onDelete={() => delMut.mutate(inv.id)}
                 onSaveDetails={(v) => detailsMut.mutate({ id: inv.id, ...v })}
+                onReuse={(v) => resetMut.mutate({ id: inv.id, ...v })}
               />
             ))}
           </div>
@@ -441,6 +457,50 @@ function BulkCreateForm({
   const [mode, setMode] = useState<"count" | "list">("count");
   const [count, setCount] = useState(10);
   const [list, setList] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  async function importSheet(file: File) {
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array" });
+      const sheetName = wb.SheetNames[0];
+      if (!sheetName) throw new Error("الملف فارغ");
+      const ws = wb.Sheets[sheetName];
+      if (!ws) throw new Error("الملف فارغ");
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, blankrows: false, raw: false });
+      const nameKeys = ["اسم", "الاسم", "المدعو", "name", "guest"];
+      const phoneKeys = ["جوال", "الجوال", "جوّال", "رقم", "هاتف", "phone", "mobile", "number"];
+      const out: string[] = [];
+      let nameIdx = 0;
+      let phoneIdx = 1;
+      let start = 0;
+      const first = (rows[0] ?? []).map((c) => String(c ?? "").trim().toLowerCase());
+      const isHeader = first.some((c) => [...nameKeys, ...phoneKeys].some((k) => c.includes(k)));
+      if (isHeader) {
+        start = 1;
+        const ni = first.findIndex((c) => nameKeys.some((k) => c.includes(k)));
+        const pi = first.findIndex((c) => phoneKeys.some((k) => c.includes(k)));
+        if (ni >= 0) nameIdx = ni;
+        if (pi >= 0) phoneIdx = pi;
+      }
+      for (let r = start; r < rows.length; r++) {
+        const row = rows[r] ?? [];
+        const nm = String(row[nameIdx] ?? "").trim();
+        const ph = String(row[phoneIdx] ?? "").trim();
+        if (!nm && !ph) continue;
+        out.push(`${nm}${ph ? `, ${normalizePhone(ph)}` : ""}`);
+      }
+      if (out.length === 0) {
+        toast.error("لم أجد أسماء في الملف");
+        return;
+      }
+      setMode("list");
+      setList((prev) => (prev.trim() ? prev.trimEnd() + "\n" + out.join("\n") : out.join("\n")));
+      toast.success(`تم استخراج ${out.length} مدعو من الملف`);
+    } catch (err) {
+      toast.error((err as Error).message || "تعذّرت قراءة الملف");
+    }
+  }
 
   function submit() {
     if (mode === "count") {
@@ -466,13 +526,27 @@ function BulkCreateForm({
 
   return (
     <div className="space-y-3">
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" size="sm" variant={mode === "count" ? "default" : "outline"} onClick={() => setMode("count")}>
           عدد فقط
         </Button>
         <Button type="button" size="sm" variant={mode === "list" ? "default" : "outline"} onClick={() => setMode("list")}>
           قائمة أسماء + جوالات
         </Button>
+        <Button type="button" size="sm" variant="outline" onClick={() => fileRef.current?.click()}>
+          <FileSpreadsheet className="size-4" /> ملف إكسل
+        </Button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept=".xlsx,.xls,.csv"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            e.target.value = "";
+            if (f) importSheet(f);
+          }}
+        />
       </div>
       {mode === "count" ? (
         <div className="flex flex-wrap items-end gap-3">
@@ -1268,6 +1342,7 @@ function InvitationCard({
   canDelete,
   onDelete,
   onSaveDetails,
+  onReuse,
 }: {
   inv: Invitation;
   ev: EventRow;
@@ -1276,6 +1351,7 @@ function InvitationCard({
   canDelete: boolean;
   onDelete: () => void;
   onSaveDetails: (v: { guest_name?: string; phone?: string; caption_text?: string; max_companions?: number | null; scan_limit?: number }) => void;
+  onReuse?: (v: { guest_name?: string; phone?: string; new_code?: boolean }) => void;
 }) {
   const rsvpUrl = `${origin}/i/${inv.code}`;
   const scanUrl = `${origin}/s/${inv.scan_code}`;
@@ -1287,6 +1363,10 @@ function InvitationCard({
   const [showWa, setShowWa] = useState(false);
   const [waMsg, setWaMsg] = useState("");
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [reuseOpen, setReuseOpen] = useState(false);
+  const [reuseName, setReuseName] = useState("");
+  const [reusePhone, setReusePhone] = useState("");
+  const [reuseNewCode, setReuseNewCode] = useState(false);
 
   function copy(url: string, label: string) {
     navigator.clipboard.writeText(url);
@@ -1500,6 +1580,46 @@ function InvitationCard({
         {inv.guest_name && <p className="hidden print:block text-center text-sm">{inv.guest_name}</p>}
         {inv.apology_message && (
           <p className="rounded bg-muted/50 p-2 text-xs text-muted-foreground print:hidden">✉️ {inv.apology_message}</p>
+        )}
+        {inv.rsvp_status === "declined" && onReuse && (
+          <div className="space-y-2 rounded-md border border-destructive/30 bg-destructive/5 p-2 print:hidden">
+            <p className="text-xs text-muted-foreground">
+              اعتذر المدعو — يمكنك إعادة استخدام هذه البطاقة وإرسالها لضيف آخر.
+            </p>
+            {!reuseOpen ? (
+              <Button size="sm" variant="outline" className="w-full" onClick={() => setReuseOpen(true)}>
+                <RefreshCw className="size-3.5" /> إعادة استخدام لضيف آخر
+              </Button>
+            ) : (
+              <div className="space-y-2">
+                <Input placeholder="اسم الضيف الجديد" value={reuseName} onChange={(e) => setReuseName(e.target.value)} className="h-8 text-xs" />
+                <Input placeholder="جواله (اختياري)" value={reusePhone} onChange={(e) => setReusePhone(e.target.value)} dir="ltr" className="h-8 text-xs" />
+                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <input type="checkbox" checked={reuseNewCode} onChange={(e) => setReuseNewCode(e.target.checked)} />
+                  توليد رابط وباركود جديد (يُلغي القديم)
+                </label>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      onReuse({
+                        guest_name: reuseName.trim() || undefined,
+                        phone: reusePhone.trim() ? normalizePhone(reusePhone) : undefined,
+                        new_code: reuseNewCode,
+                      });
+                      setReuseOpen(false);
+                      setReuseName("");
+                      setReusePhone("");
+                    }}
+                  >
+                    تأكيد
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setReuseOpen(false)}>إلغاء</Button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>
