@@ -98,6 +98,8 @@ type EventRow = {
   caption_x: number;
   caption_y: number;
   caption_show_box: boolean;
+  caption_show_name: boolean;
+  caption_show_companions: boolean;
   number_on_image: boolean;
   number_in_filename: boolean;
   qr_color: string;
@@ -117,6 +119,9 @@ type EventRow = {
   cover_caption_number_color: string;
   cover_caption_show_box: boolean;
   cover_caption_show_number: boolean;
+  cover_show_caption: boolean;
+  caption_show_name: boolean;
+  caption_show_companions: boolean;
   default_max_companions: number;
   default_scan_limit: number;
 };
@@ -559,7 +564,8 @@ async function composeInvitationDataUrl(
     number,
     showNumber: !!ev.caption_show_number && !!ev.number_on_image,
     captionText: inv.caption_text,
-    companionsText: companionsLabel(inv.rsvp_status, inv.companions),
+    nameText: ev.caption_show_name ? inv.guest_name : null,
+    companionsText: ev.caption_show_companions === false ? "" : companionsLabel(inv.rsvp_status, inv.companions),
     numberColor: ev.caption_number_color,
     textColor: ev.caption_text_color,
     fontFamily: ev.caption_font_family,
@@ -859,6 +865,8 @@ type DesignPatch = Partial<{
   caption_y: number;
   caption_show_number: boolean;
   caption_show_box: boolean;
+  caption_show_name: boolean;
+  caption_show_companions: boolean;
   number_on_image: boolean;
   number_in_filename: boolean;
   caption_text_color: string;
@@ -899,6 +907,8 @@ function InvitationDesigner({
 
   const [showNumber, setShowNumber] = useState<boolean>(!!ev.caption_show_number);
   const [showBox, setShowBox] = useState<boolean>(ev.caption_show_box !== false);
+  const [showName, setShowName] = useState<boolean>(!!ev.caption_show_name);
+  const [showCompanions, setShowCompanions] = useState<boolean>(ev.caption_show_companions !== false);
   const [numberOnImage, setNumberOnImage] = useState<boolean>(ev.number_on_image !== false);
   const [numberInFilename, setNumberInFilename] = useState<boolean>(ev.number_in_filename !== false);
 
@@ -969,6 +979,8 @@ function InvitationDesigner({
       caption_x: capX, caption_y: capY,
       caption_show_number: showNumber,
       caption_show_box: showBox,
+      caption_show_name: showName,
+      caption_show_companions: showCompanions,
       number_on_image: numberOnImage,
       number_in_filename: numberInFilename,
       caption_text_color: textColor,
@@ -1070,6 +1082,16 @@ function InvitationDesigner({
                         {sampleText}
                       </div>
                     )}
+                    {showName && sample?.guest_name && (
+                      <div style={{ color: textColor, fontSize: `${Math.max(1.4, (qrSize * fontSize * 0.9) / 100)}cqw`, fontWeight: weight, lineHeight: 1.15 }}>
+                        {sample.guest_name}
+                      </div>
+                    )}
+                    {showCompanions && companionsLabel(sample?.rsvp_status, sample?.companions) && (
+                      <div style={{ color: textColor, fontSize: `${Math.max(1.2, (qrSize * fontSize * 0.75) / 100)}cqw`, fontWeight: weight, lineHeight: 1.15 }}>
+                        {companionsLabel(sample?.rsvp_status, sample?.companions)}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -1143,6 +1165,14 @@ function InvitationDesigner({
             <label className="flex items-center gap-2 text-xs">
               <input type="checkbox" checked={showBox} onChange={(e) => setShowBox(e.target.checked)} />
               خلفية بيضاء خلف النص
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={showName} onChange={(e) => setShowName(e.target.checked)} />
+              إظهار اسم المدعو على الصورة
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={showCompanions} onChange={(e) => setShowCompanions(e.target.checked)} />
+              إظهار عدد المرافقين على الصورة
             </label>
             <div className="grid grid-cols-2 gap-2">
               <div>
@@ -1354,7 +1384,15 @@ function InvitationCard({
               {inv.caption_text}
             </p>
           )}
-          {companionsLabel(inv.rsvp_status, inv.companions) && (
+          {ev.caption_show_name && inv.guest_name && (
+            <p
+              className="text-sm"
+              style={{ color: ev.caption_text_color || undefined, fontFamily: ev.caption_font_family || undefined }}
+            >
+              {inv.guest_name}
+            </p>
+          )}
+          {ev.caption_show_companions !== false && companionsLabel(inv.rsvp_status, inv.companions) && (
             <p
               className="text-sm"
               style={{
@@ -2460,6 +2498,7 @@ type CoverPatch = Partial<{
   cover_caption_number_color: string;
   cover_caption_show_box: boolean;
   cover_caption_show_number: boolean;
+  cover_show_caption: boolean;
   default_max_companions: number;
   default_scan_limit: number;
 }>;
@@ -2491,6 +2530,7 @@ function CoverDesigner({
   const [numberColor, setNumberColor] = useState<string>(ev.cover_caption_number_color || "#111111");
   const [showBox, setShowBox] = useState<boolean>(ev.cover_caption_show_box !== false);
   const [showNumber, setShowNumber] = useState<boolean>(!!ev.cover_caption_show_number);
+  const [showText, setShowText] = useState<boolean>(ev.cover_show_caption !== false);
   const [maxComp, setMaxComp] = useState<number>(Number(ev.default_max_companions ?? 0));
   const [scanLimit, setScanLimit] = useState<number>(Number(ev.default_scan_limit ?? 1));
 
@@ -2587,9 +2627,11 @@ function CoverDesigner({
                     {sampleNumber}
                   </div>
                 )}
-                <div style={{ color: textColor, fontSize: `${Math.max(1.4, (coverQrSize * fontSize * 0.9) / 100)}cqw`, fontWeight: weight, lineHeight: 1.15 }}>
-                  {sampleText}
-                </div>
+                {showText && (
+                  <div style={{ color: textColor, fontSize: `${Math.max(1.4, (coverQrSize * fontSize * 0.9) / 100)}cqw`, fontWeight: weight, lineHeight: 1.15 }}>
+                    {sampleText}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -2608,6 +2650,10 @@ function CoverDesigner({
         <CardContent className="space-y-5">
           <section className="space-y-2">
             <p className="text-xs font-semibold">النص على الصورة</p>
+            <label className="flex items-center gap-2 text-xs">
+              <input type="checkbox" checked={showText} onChange={(e) => setShowText(e.target.checked)} />
+              إظهار النص على الصورة
+            </label>
             <label className="flex items-center gap-2 text-xs">
               <input type="checkbox" checked={showNumber} onChange={(e) => setShowNumber(e.target.checked)} />
               إظهار رقم الدعوة
