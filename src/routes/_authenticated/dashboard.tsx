@@ -25,6 +25,8 @@ function EventsList() {
 
   const q = useQuery({ queryKey: ["my-events"], queryFn: () => list() });
   const [showNew, setShowNew] = useState(false);
+  const [withQr, setWithQr] = useState(true);
+
 
   const createMut = useMutation({
     mutationFn: (v: { title: string; qr_enabled: boolean }) => create({ data: v }),
