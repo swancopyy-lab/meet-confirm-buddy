@@ -25,9 +25,11 @@ function EventsList() {
 
   const q = useQuery({ queryKey: ["my-events"], queryFn: () => list() });
   const [showNew, setShowNew] = useState(false);
+  const [withQr, setWithQr] = useState(true);
+
 
   const createMut = useMutation({
-    mutationFn: (v: { title: string }) => create({ data: v }),
+    mutationFn: (v: { title: string; qr_enabled: boolean }) => create({ data: v }),
     onSuccess: (row) => {
       toast.success("تم إنشاء المناسبة");
       qc.invalidateQueries({ queryKey: ["my-events"] });
@@ -36,6 +38,7 @@ function EventsList() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
@@ -70,22 +73,48 @@ function EventsList() {
           </CardHeader>
           <CardContent>
             <form
-              className="flex flex-wrap items-end gap-3"
+              className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
                 const title = (fd.get("title") as string)?.trim() || "حفل زفاف";
-                createMut.mutate({ title });
+                createMut.mutate({ title, qr_enabled: withQr });
               }}
             >
-              <div className="space-y-2 flex-1 min-w-[240px]">
+              <div className="space-y-2 min-w-[240px]">
                 <Label htmlFor="title">عنوان المناسبة</Label>
                 <Input id="title" name="title" defaultValue="حفل زفاف" required />
               </div>
+
+              <div className="space-y-2">
+                <Label>نوع الدعوة</Label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {[
+                    { v: true, t: "دعوة بباركود", d: "لكل مدعو رمز QR يُمسح عند الباب" },
+                    { v: false, t: "دعوة بدون باركود", d: "صورة دعوة وتأكيد حضور فقط" },
+                  ].map((o) => (
+                    <button
+                      key={String(o.v)}
+                      type="button"
+                      onClick={() => setWithQr(o.v)}
+                      className={`rounded-lg border p-3 text-right transition-colors ${
+                        withQr === o.v
+                          ? "border-gold bg-secondary"
+                          : "border-border hover:bg-muted/50"
+                      }`}
+                    >
+                      <span className="block text-sm font-semibold text-primary">{o.t}</span>
+                      <span className="block text-xs text-muted-foreground">{o.d}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <Button type="submit" disabled={createMut.isPending}>
                 {createMut.isPending ? "جاري..." : "إنشاء ومتابعة الإعداد"}
               </Button>
             </form>
+
           </CardContent>
         </Card>
       )}

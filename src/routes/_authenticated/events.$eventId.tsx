@@ -93,6 +93,7 @@ type EventRow = {
   qr_x: number;
   qr_y: number;
   qr_size: number;
+  qr_enabled?: boolean;
   companions_enabled: boolean;
   caption_show_number: boolean;
   caption_text_color: string;
@@ -654,6 +655,7 @@ async function composeInvitationDataUrl(
     qrBgColor: ev.qr_bg_color,
     qrEcc: (ev.qr_ecc || "M") as "L" | "M" | "Q" | "H",
     qrMargin: ev.qr_margin,
+    showQr: ev.qr_enabled !== false,
   });
 }
 
@@ -933,6 +935,7 @@ type DesignPatch = Partial<{
   qr_x: number;
   qr_y: number;
   qr_size: number;
+  qr_enabled?: boolean;
   caption_x: number;
   caption_y: number;
   caption_show_number: boolean;
@@ -1118,8 +1121,8 @@ function InvitationDesigner({
                 className="relative mx-auto w-full max-w-md overflow-hidden rounded-md border border-gold/30 select-none touch-none"
               >
                 <img src={ev.invitation_image_url} alt="معاينة" className="block w-full h-auto" draggable={false} />
-                {/* QR overlay */}
-                <div
+                {ev.qr_enabled !== false && (
+                                <div
                   onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setDragging("qr"); }}
                   className="absolute cursor-move select-none"
                   style={{ left: `${qrX}%`, top: `${qrY}%`, width: `${qrSize}%`, aspectRatio: "1 / 1", transform: "translate(-50%, -50%)", touchAction: "none" }}
@@ -1128,6 +1131,7 @@ function InvitationDesigner({
                     {qrDataUrl && <img src={qrDataUrl} alt="qr" className="w-full h-full block" draggable={false} />}
                   </div>
                 </div>
+                )}
                 {/* Caption overlay */}
                 {(showNumber || sampleText) && (
                   <div
@@ -1182,8 +1186,9 @@ function InvitationDesigner({
           <CardTitle className="font-serif text-base">خيارات التصميم</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          {/* Barcode */}
+          {ev.qr_enabled !== false && (
           <section className="space-y-2">
+
             <p className="text-xs font-semibold">الباركود</p>
             <div>
               <Label className="text-xs">الحجم ({Math.round(qrSize)}%)</Label>
@@ -1226,6 +1231,7 @@ function InvitationDesigner({
               </div>
             </div>
           </section>
+          )}
 
           {/* Caption */}
           <section className="space-y-2 border-t border-gold/20 pt-3">
@@ -1444,7 +1450,7 @@ function InvitationCard({
             </Button>
           )}
         </div>
-        <div className="flex justify-center"><div className="size-36 bg-white"><QRCard url={scanUrl} size={512} /></div></div>
+        {ev.qr_enabled !== false && (<div className="flex justify-center"><div className="size-36 bg-white"><QRCard url={scanUrl} size={512} /></div></div>)}
         <div className="text-center space-y-1">
           {ev.caption_show_number && (
             <p
@@ -1641,6 +1647,7 @@ function EventForm({
     notes: string | null;
     scan_date?: string | null;
     companions_enabled?: boolean;
+    qr_enabled?: boolean;
   };
   onSubmit: (v: {
     title: string;
@@ -1652,10 +1659,12 @@ function EventForm({
     notes?: string;
     scan_date?: string | null;
     companions_enabled?: boolean;
+    qr_enabled?: boolean;
   }) => void;
   loading?: boolean;
 }) {
   const [companionsOn, setCompanionsOn] = useState<boolean>(initial?.companions_enabled ?? true);
+  const [qrOn, setQrOn] = useState<boolean>(initial?.qr_enabled ?? true);
 
   return (
     <form className="space-y-4" onSubmit={(e) => {
@@ -1671,6 +1680,7 @@ function EventForm({
         notes: (fd.get("notes") as string) || undefined,
         scan_date: (fd.get("scan_date") as string) || null,
         companions_enabled: companionsOn,
+        qr_enabled: qrOn,
       });
     }}>
       <div className="space-y-2">
@@ -1720,6 +1730,10 @@ function EventForm({
         <label className="flex items-center gap-2 text-sm">
           <input type="checkbox" checked={companionsOn} onChange={(e) => setCompanionsOn(e.target.checked)} />
           السماح للمدعو بإضافة عدد المرافقين
+        </label>
+        <label className="flex items-center gap-2 text-sm">
+          <input type="checkbox" checked={qrOn} onChange={(e) => setQrOn(e.target.checked)} />
+          دعوة بباركود (إلغاء الخيار = دعوة بدون باركود)
         </label>
       </div>
 
