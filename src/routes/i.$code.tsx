@@ -121,6 +121,7 @@ function InvitePage() {
 
   const alreadyResponded = inv.rsvp_status !== "pending";
   const checkedIn = !!inv.scanned_at;
+  const qrEnabled = (event as { qr_enabled?: boolean } | undefined)?.qr_enabled !== false;
   const qrSize = Number(event?.qr_size ?? 22);
   const qrX = Number(event?.qr_x ?? 50);
   const qrY = Number(event?.qr_y ?? 80);
@@ -227,6 +228,7 @@ function InvitePage() {
         qrBgColor: (event as { qr_bg_color?: string | null } | undefined)?.qr_bg_color,
         qrEcc: ((event as { qr_ecc?: string | null } | undefined)?.qr_ecc || "M") as "L" | "M" | "Q" | "H",
         qrMargin: (event as { qr_margin?: number | null } | undefined)?.qr_margin ?? 1,
+        showQr: qrEnabled,
       });
       const bin = atob(dataUrl.split(",")[1]);
       const arr = new Uint8Array(bin.length);
@@ -301,6 +303,7 @@ function InvitePage() {
           alt="دعوة"
           className="block w-full h-auto"
         />
+        {qrEnabled && (
         <div
           className="absolute overflow-hidden"
           style={{
@@ -315,6 +318,7 @@ function InvitePage() {
             <QRCard url={scanUrl} size={512} />
           </div>
         </div>
+        )}
         {(showNumber || captionText || guestNameText || companionsText) && (
           <div
             className="absolute px-2 py-1 leading-tight"
@@ -450,11 +454,13 @@ function InvitePage() {
             {event.notes}
           </p>
         )}
+        {qrEnabled && (
         <div className="flex justify-center pt-3">
           <div className="bg-white p-2 rounded shadow size-48">
             <QRCard url={scanUrl} size={512} />
           </div>
         </div>
+        )}
 
         <div className="flex items-center justify-center gap-2 pt-2 text-[11px] text-muted-foreground">
           <ShieldCheck className="size-3.5" />
