@@ -1187,8 +1187,8 @@ function InvitationDesigner({
         </CardHeader>
         <CardContent className="space-y-5">
           {ev.qr_enabled !== false && (
-          {/* Barcode */}
           <section className="space-y-2">
+
             <p className="text-xs font-semibold">الباركود</p>
             <div>
               <Label className="text-xs">الحجم ({Math.round(qrSize)}%)</Label>
