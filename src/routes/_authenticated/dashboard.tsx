@@ -27,7 +27,7 @@ function EventsList() {
   const [showNew, setShowNew] = useState(false);
 
   const createMut = useMutation({
-    mutationFn: (v: { title: string }) => create({ data: v }),
+    mutationFn: (v: { title: string; qr_enabled: boolean }) => create({ data: v }),
     onSuccess: (row) => {
       toast.success("تم إنشاء المناسبة");
       qc.invalidateQueries({ queryKey: ["my-events"] });
@@ -36,6 +36,7 @@ function EventsList() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
