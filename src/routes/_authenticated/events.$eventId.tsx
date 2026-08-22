@@ -1121,8 +1121,8 @@ function InvitationDesigner({
                 className="relative mx-auto w-full max-w-md overflow-hidden rounded-md border border-gold/30 select-none touch-none"
               >
                 <img src={ev.invitation_image_url} alt="معاينة" className="block w-full h-auto" draggable={false} />
-                {/* QR overlay */}
-                <div
+                {ev.qr_enabled !== false && (
+                                <div
                   onPointerDown={(e) => { e.preventDefault(); e.currentTarget.setPointerCapture(e.pointerId); setDragging("qr"); }}
                   className="absolute cursor-move select-none"
                   style={{ left: `${qrX}%`, top: `${qrY}%`, width: `${qrSize}%`, aspectRatio: "1 / 1", transform: "translate(-50%, -50%)", touchAction: "none" }}
@@ -1131,6 +1131,7 @@ function InvitationDesigner({
                     {qrDataUrl && <img src={qrDataUrl} alt="qr" className="w-full h-full block" draggable={false} />}
                   </div>
                 </div>
+                )}
                 {/* Caption overlay */}
                 {(showNumber || sampleText) && (
                   <div
@@ -1185,6 +1186,7 @@ function InvitationDesigner({
           <CardTitle className="font-serif text-base">خيارات التصميم</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
+          {ev.qr_enabled !== false && (
           {/* Barcode */}
           <section className="space-y-2">
             <p className="text-xs font-semibold">الباركود</p>
@@ -1229,6 +1231,7 @@ function InvitationDesigner({
               </div>
             </div>
           </section>
+          )}
 
           {/* Caption */}
           <section className="space-y-2 border-t border-gold/20 pt-3">
