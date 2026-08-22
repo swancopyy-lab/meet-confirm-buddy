@@ -24,6 +24,7 @@ export type ComposeOptions = {
   qrBgColor?: string | null;
   qrEcc?: "L" | "M" | "Q" | "H" | null;
   qrMargin?: number | null;
+  showQr?: boolean;
 };
 
 /** Draws the full invitation image with QR + caption/number/companions burned in. */
@@ -43,25 +44,28 @@ export async function composeInvitationImage(o: ComposeOptions): Promise<string>
   const qrEcc = (o.qrEcc || "M") as "L" | "M" | "Q" | "H";
   const qrMargin = Number.isFinite(o.qrMargin as number) ? (o.qrMargin as number) : 1;
   const baseFontSize = Number(o.fontSize ?? 28);
+  const showQr = o.showQr !== false;
 
   if (!o.imageUrl) {
     const canvas = document.createElement("canvas");
     const size = 900;
     canvas.width = size;
-    canvas.height = size + 260;
+    canvas.height = showQr ? size + 260 : 360;
     const ctx = canvas.getContext("2d")!;
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const qrCanvas = document.createElement("canvas");
-    await QRCode.toCanvas(qrCanvas, o.scanUrl, {
-      width: size,
-      margin: qrMargin,
-      errorCorrectionLevel: qrEcc,
-      color: { dark: qrDark, light: qrLight },
-    });
-    ctx.drawImage(qrCanvas, 0, 0, size, size);
+    if (showQr) {
+      const qrCanvas = document.createElement("canvas");
+      await QRCode.toCanvas(qrCanvas, o.scanUrl, {
+        width: size,
+        margin: qrMargin,
+        errorCorrectionLevel: qrEcc,
+        color: { dark: qrDark, light: qrLight },
+      });
+      ctx.drawImage(qrCanvas, 0, 0, size, size);
+    }
     ctx.textAlign = "center";
-    let y = size + 20;
+    let y = showQr ? size + 20 : 20;
     if (showNumber) {
       ctx.fillStyle = numberColor;
       ctx.font = `bold 72px ${fontFamily}`;
@@ -110,17 +114,19 @@ export async function composeInvitationImage(o: ComposeOptions): Promise<string>
   const qrY = qrCy - qrSizePx / 2;
   const pad = qrSizePx * 0.06;
 
-  ctx.fillStyle = qrLight;
-  ctx.fillRect(qrX - pad, qrY - pad, qrSizePx + pad * 2, qrSizePx + pad * 2);
+  if (showQr) {
+    ctx.fillStyle = qrLight;
+    ctx.fillRect(qrX - pad, qrY - pad, qrSizePx + pad * 2, qrSizePx + pad * 2);
 
-  const qrCanvas = document.createElement("canvas");
-  await QRCode.toCanvas(qrCanvas, o.scanUrl, {
-    width: Math.max(256, Math.round(qrSizePx)),
-    margin: qrMargin,
-    errorCorrectionLevel: qrEcc,
-    color: { dark: qrDark, light: qrLight },
-  });
-  ctx.drawImage(qrCanvas, qrX, qrY, qrSizePx, qrSizePx);
+    const qrCanvas = document.createElement("canvas");
+    await QRCode.toCanvas(qrCanvas, o.scanUrl, {
+      width: Math.max(256, Math.round(qrSizePx)),
+      margin: qrMargin,
+      errorCorrectionLevel: qrEcc,
+      color: { dark: qrDark, light: qrLight },
+    });
+    ctx.drawImage(qrCanvas, qrX, qrY, qrSizePx, qrSizePx);
+  }
 
   const numberFontSize = Math.max(14, Math.round(qrSizePx * (baseFontSize / 100)));
   const textFontSize = Math.max(14, Math.round(qrSizePx * (baseFontSize / 100) * 0.9));

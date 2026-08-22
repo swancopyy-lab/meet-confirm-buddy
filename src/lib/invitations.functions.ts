@@ -140,6 +140,7 @@ export const upsertMyEvent = createServerFn({ method: "POST" })
         qr_y: z.number().min(0).max(100).optional(),
         qr_size: z.number().min(5).max(80).optional(),
         companions_enabled: z.boolean().optional(),
+        qr_enabled: z.boolean().optional(),
         caption_show_number: z.boolean().optional(),
         caption_text_color: z.string().trim().max(20).optional(),
         caption_number_color: z.string().trim().max(20).optional(),
@@ -961,7 +962,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: event } = await supabaseAdmin
       .from("events")
       .select(
-        "title, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_number_color, cover_caption_show_box, cover_caption_show_number, cover_show_caption, caption_show_name, caption_show_companions, default_max_companions",
+        "title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_number_color, cover_caption_show_box, cover_caption_show_number, cover_show_caption, caption_show_name, caption_show_companions, default_max_companions",
       )
       .eq("id", inv.event_id)
       .single();
