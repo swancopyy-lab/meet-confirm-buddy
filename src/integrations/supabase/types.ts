@@ -98,6 +98,7 @@ export type Database = {
           qr_bg_color: string
           qr_color: string
           qr_ecc: string
+          qr_enabled: boolean
           qr_margin: number
           qr_size: number
           qr_x: number
@@ -150,6 +151,7 @@ export type Database = {
           qr_bg_color?: string
           qr_color?: string
           qr_ecc?: string
+          qr_enabled?: boolean
           qr_margin?: number
           qr_size?: number
           qr_x?: number
@@ -202,6 +204,7 @@ export type Database = {
           qr_bg_color?: string
           qr_color?: string
           qr_ecc?: string
+          qr_enabled?: boolean
           qr_margin?: number
           qr_size?: number
           qr_x?: number
