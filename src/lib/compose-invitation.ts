@@ -171,6 +171,6 @@ export async function composeInvitationImage(o: ComposeOptions): Promise<string>
 export function companionsLabel(status: string | null | undefined, companions: number | null | undefined): string {
   if (status !== "attending") return "";
   const c = Number(companions || 0);
-  if (c <= 0) return "بدون مرافقين";
+  if (c <= 0) return "";
   return `عدد المرافقين: ${c}`;
 }
