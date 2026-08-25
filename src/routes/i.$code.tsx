@@ -15,12 +15,12 @@ import { composeInvitationImage, companionsLabel } from "@/lib/compose-invitatio
 
 export const Route = createFileRoute("/i/$code")({
   head: ({ loaderData }) => {
-    const ev = (loaderData as { event?: { groom_name?: string | null; bride_name?: string | null; title?: string | null; invitation_image_url?: string | null } } | undefined)?.event;
+    const ev = (loaderData as { event?: { groom_name?: string | null; bride_name?: string | null; title?: string | null; cover_image_url?: string | null; invitation_image_url?: string | null } } | undefined)?.event;
     const title = ev?.groom_name && ev?.bride_name
       ? `دعوة حفل ${ev.groom_name} و ${ev.bride_name}`
       : ev?.title || `دعوة`;
     const desc = "أكّد حضورك للحفل أو اعتذر بلمسة واحدة.";
-    const img = ev?.invitation_image_url || undefined;
+    const img = ev?.cover_image_url || ev?.invitation_image_url || undefined;
     const meta: Array<{ title?: string; name?: string; property?: string; content?: string }> = [
       { title },
       { name: "description", content: desc },
