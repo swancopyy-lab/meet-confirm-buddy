@@ -30,7 +30,7 @@ export type ComposeOptions = {
 /** Draws the full invitation image with QR + caption/number/companions burned in. */
 export async function composeInvitationImage(o: ComposeOptions): Promise<string> {
   const showNumber = !!o.showNumber && o.number != null;
-  const showBox = o.showBox !== false;
+  const showBox = o.showBox === true;
   const captionText = (o.captionText || "").trim();
   const nameText = (o.nameText || "").trim();
   const companionsText = (o.companionsText || "").trim();

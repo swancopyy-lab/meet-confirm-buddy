@@ -693,7 +693,7 @@ async function composeInvitationDataUrl(
     align: (ev.caption_align || "center") as "left" | "center" | "right",
     fontWeight: ev.caption_font_weight,
     fontSize: ev.caption_font_size,
-    showBox: ev.caption_show_box !== false,
+    showBox: ev.caption_show_box === true,
     captionX: ev.caption_x,
     captionY: ev.caption_y,
     qrX: ev.qr_x,
@@ -1029,7 +1029,7 @@ function InvitationDesigner({
   const [capY, setCapY] = useState<number>(Number(ev.caption_y ?? 92));
 
   const [showNumber, setShowNumber] = useState<boolean>(!!ev.caption_show_number);
-  const [showBox, setShowBox] = useState<boolean>(ev.caption_show_box !== false);
+  const [showBox, setShowBox] = useState<boolean>(ev.caption_show_box === true);
   const [showName, setShowName] = useState<boolean>(!!ev.caption_show_name);
   const [showCompanions, setShowCompanions] = useState<boolean>(ev.caption_show_companions !== false);
   const [numberOnImage, setNumberOnImage] = useState<boolean>(ev.number_on_image !== false);
@@ -2730,7 +2730,7 @@ function CoverDesigner({
   const [weight, setWeight] = useState<number>(Number(ev.cover_caption_font_weight ?? 600));
   const [textColor, setTextColor] = useState<string>(ev.cover_caption_text_color || "#111111");
   const [numberColor, setNumberColor] = useState<string>(ev.cover_caption_number_color || "#111111");
-  const [showBox, setShowBox] = useState<boolean>(ev.cover_caption_show_box !== false);
+  const [showBox, setShowBox] = useState<boolean>(ev.cover_caption_show_box === true);
   const [showNumber, setShowNumber] = useState<boolean>(!!ev.cover_caption_show_number);
   const [showText, setShowText] = useState<boolean>(ev.cover_show_caption !== false);
   const [maxComp, setMaxComp] = useState<number>(Number(ev.default_max_companions ?? 0));
