@@ -166,7 +166,7 @@ function InvitePage() {
   const textColor = ev2?.caption_text_color || undefined;
   const capX = Number(ev2?.caption_x ?? 50);
   const capY = Number(ev2?.caption_y ?? 92);
-  const capShowBox = ev2?.caption_show_box !== false;
+  const capShowBox = ev2?.caption_show_box === true;
   const capFontSize = Number(ev2?.caption_font_size ?? 28);
   const capFontWeight = Number(ev2?.caption_font_weight ?? 600);
   const capAlign = (ev2?.caption_align || "center") as "left" | "center" | "right";
@@ -186,7 +186,7 @@ function InvitePage() {
   const coverWeight = Number(ev2?.cover_caption_font_weight ?? 600);
   const coverTextColor = ev2?.cover_caption_text_color || "#111";
   const coverNumberColor = ev2?.cover_caption_number_color || "#111";
-  const coverShowBox = ev2?.cover_caption_show_box !== false;
+  const coverShowBox = ev2?.cover_caption_show_box === true;
   const coverShowNumber = !!ev2?.cover_caption_show_number;
   const coverTextCqw = Math.max(1.4, (qrSize * coverFontSize * 0.9) / 100);
   const coverNumberCqw = Math.max(1.6, (qrSize * coverFontSize) / 100);
