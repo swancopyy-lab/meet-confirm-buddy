@@ -608,7 +608,7 @@ function buildWhatsappMessage(ev: EventRow, inv: Invitation, origin: string): st
     : "";
   return [
     `يسرّنا دعوتكم لحضور ${who}`,
-    inv.guest_name ? `الأخ/ة: ${inv.guest_name}` : "",
+    inv.guest_name ? `إلى المكرم/ة ${inv.guest_name}` : "",
     dateStr ? `التاريخ: ${dateStr}` : "",
     ev.venue ? `المكان: ${ev.venue}` : "",
     "",
