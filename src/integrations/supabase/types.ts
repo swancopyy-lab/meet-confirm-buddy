@@ -108,6 +108,7 @@ export type Database = {
           title: string
           venue: string | null
           venue_map_url: string | null
+          whatsapp_template: string | null
         }
         Insert: {
           already_image_url?: string | null
@@ -161,6 +162,7 @@ export type Database = {
           title?: string
           venue?: string | null
           venue_map_url?: string | null
+          whatsapp_template?: string | null
         }
         Update: {
           already_image_url?: string | null
@@ -214,6 +216,7 @@ export type Database = {
           title?: string
           venue?: string | null
           venue_map_url?: string | null
+          whatsapp_template?: string | null
         }
         Relationships: []
       }
