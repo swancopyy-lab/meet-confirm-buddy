@@ -127,6 +127,7 @@ type EventRow = {
   cover_show_caption: boolean;
   default_max_companions: number;
   default_scan_limit: number;
+  whatsapp_template?: string | null;
 };
 
 type Invitation = {
@@ -600,12 +601,59 @@ function BulkCreateForm({
   );
 }
 
+export const DEFAULT_WA_TEMPLATE = [
+  "يسرّنا دعوتكم لحضور {المناسبة}",
+  "إلى المكرم/ة {الاسم}",
+  "التاريخ: {التاريخ}",
+  "المكان: {المكان}",
+  "",
+  "لتأكيد الحضور:",
+  "{الرابط}",
+].join("\n");
+
+function applyWaTemplate(
+  tpl: string,
+  vars: { who: string; name: string; date: string; venue: string; url: string },
+): string {
+  const map: Record<string, string> = {
+    "{المناسبة}": vars.who,
+    "{الاسم}": vars.name,
+    "{التاريخ}": vars.date,
+    "{المكان}": vars.venue,
+    "{الرابط}": vars.url,
+  };
+  return tpl
+    .split("\n")
+    .map((line) => {
+      const tokens = line.match(/\{[^}]+\}/g) || [];
+      // Drop lines whose only dynamic value is empty
+      if (tokens.length && tokens.every((t) => t in map && !map[t])) return null;
+      let out = line;
+      for (const [k, v] of Object.entries(map)) out = out.split(k).join(v);
+      return out;
+    })
+    .filter((l): l is string => l !== null)
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function buildWhatsappMessage(ev: EventRow, inv: Invitation, origin: string): string {
   const rsvpUrl = `${origin}/i/${inv.code}`;
   const who = ev.groom_name && ev.bride_name ? `${ev.groom_name} و ${ev.bride_name}` : ev.title || "حفل زفاف";
   const dateStr = ev.event_date
     ? new Date(ev.event_date).toLocaleString("ar", { dateStyle: "full", timeStyle: "short" })
     : "";
+  const tpl = (ev.whatsapp_template || "").trim();
+  if (tpl) {
+    return applyWaTemplate(tpl, {
+      who,
+      name: inv.guest_name || "",
+      date: dateStr,
+      venue: ev.venue || "",
+      url: rsvpUrl,
+    });
+  }
   return [
     `يسرّنا دعوتكم لحضور ${who}`,
     inv.guest_name ? `إلى المكرم/ة ${inv.guest_name}` : "",
@@ -1648,6 +1696,7 @@ function EventForm({
     scan_date?: string | null;
     companions_enabled?: boolean;
     qr_enabled?: boolean;
+    whatsapp_template?: string | null;
   };
   onSubmit: (v: {
     title: string;
@@ -1660,6 +1709,7 @@ function EventForm({
     scan_date?: string | null;
     companions_enabled?: boolean;
     qr_enabled?: boolean;
+    whatsapp_template?: string | null;
   }) => void;
   loading?: boolean;
 }) {
@@ -1681,6 +1731,7 @@ function EventForm({
         scan_date: (fd.get("scan_date") as string) || null,
         companions_enabled: companionsOn,
         qr_enabled: qrOn,
+        whatsapp_template: ((fd.get("whatsapp_template") as string) || "").trim() || null,
       });
     }}>
       <div className="space-y-2">
@@ -1723,6 +1774,25 @@ function EventForm({
       <div className="space-y-2">
         <Label htmlFor="notes">ملاحظات للمدعوين</Label>
         <Textarea id="notes" name="notes" defaultValue={initial?.notes || ""} rows={3} />
+      </div>
+
+      <div className="space-y-2 rounded-md border border-gold/30 bg-secondary/30 p-3">
+        <Label htmlFor="whatsapp_template" className="font-serif text-sm font-semibold">
+          رسالة الواتساب الافتراضية
+        </Label>
+        <Textarea
+          id="whatsapp_template"
+          name="whatsapp_template"
+          rows={7}
+          defaultValue={initial?.whatsapp_template ?? DEFAULT_WA_TEMPLATE}
+          placeholder={DEFAULT_WA_TEMPLATE}
+        />
+        <p className="text-xs text-muted-foreground">
+          تُستخدم لكل الدعوات، وتقدر تعدّلها قبل الإرسال لكل مدعو. المتغيرات:
+          {" "}<code dir="ltr">{"{الاسم}"}</code> <code dir="ltr">{"{المناسبة}"}</code>{" "}
+          <code dir="ltr">{"{التاريخ}"}</code> <code dir="ltr">{"{المكان}"}</code>{" "}
+          <code dir="ltr">{"{الرابط}"}</code> — السطر الذي متغيّره فارغ يُحذف تلقائياً.
+        </p>
       </div>
 
       <div className="space-y-3 rounded-md border border-gold/30 bg-secondary/30 p-3">
