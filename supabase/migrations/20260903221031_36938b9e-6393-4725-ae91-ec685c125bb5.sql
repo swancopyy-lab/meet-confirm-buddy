@@ -1,0 +1,1 @@
+ALTER TABLE public.events ALTER COLUMN public_code SET DEFAULT upper(substr(replace(gen_random_uuid()::text,'-',''),1,10));
