@@ -1022,3 +1022,93 @@ export const submitRsvp = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// ---------- Shared public link (events without QR) ----------
+
+const PUBLIC_EVENT_FIELDS =
+  "id, public_code, title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_show_box, cover_show_caption, companions_enabled, default_max_companions, default_scan_limit";
+
+export const getEventByPublicCode = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) =>
+    z.object({ code: z.string().trim().min(4).max(64) }).parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: event, error } = await supabaseAdmin
+      .from("events")
+      .select(PUBLIC_EVENT_FIELDS)
+      .eq("public_code", data.code.toUpperCase())
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!event) return null;
+    return event;
+  });
+
+export const joinPublicEvent = createServerFn({ method: "POST" })
+  .inputValidator((data: unknown) =>
+    z
+      .object({
+        code: z.string().trim().min(4).max(64),
+        guest_name: z.string().trim().min(2).max(120),
+        status: z.enum(["attending", "declined"]),
+        companions: z.number().int().min(0).max(20).optional(),
+        phone: z.string().trim().max(30).optional(),
+        apology_message: z.string().trim().max(500).optional(),
+      })
+      .parse(data),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: event, error: evErr } = await supabaseAdmin
+      .from("events")
+      .select("id, host_id, qr_enabled, default_max_companions, default_scan_limit")
+      .eq("public_code", data.code.toUpperCase())
+      .maybeSingle();
+    if (evErr) throw new Error(evErr.message);
+    if (!event) throw new Error("الرابط غير صحيح");
+    const ev = event as unknown as {
+      id: string;
+      host_id: string;
+      qr_enabled: boolean | null;
+      default_max_companions: number | null;
+      default_scan_limit: number | null;
+    };
+    const maxCompanions = ev.default_max_companions ?? 0;
+    const isAttending = data.status === "attending";
+    const requested = isAttending ? (data.companions ?? 0) : 0;
+    if (requested > maxCompanions) {
+      throw new Error(`الحد المسموح للمرافقين هو ${maxCompanions}`);
+    }
+
+    const { data: maxRow } = await supabaseAdmin
+      .from("invitations")
+      .select("display_number")
+      .eq("event_id", ev.id)
+      .order("display_number", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    const nextNum = Number((maxRow as { display_number?: number | null } | null)?.display_number ?? 0) + 1;
+
+    const { data: inserted, error } = await supabaseAdmin
+      .from("invitations")
+      .insert({
+        event_id: ev.id,
+        host_id: ev.host_id,
+        code: generateCode(),
+        scan_code: generateScanCode(),
+        guest_name: data.guest_name,
+        phone: data.phone || null,
+        display_number: nextNum,
+        max_companions: maxCompanions,
+        scan_limit: ev.default_scan_limit ?? 1,
+        rsvp_status: data.status,
+        companions: requested,
+        responded_at: new Date().toISOString(),
+        apology_message: isAttending ? null : data.apology_message || null,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      } as any)
+      .select("code")
+      .single();
+    if (error) throw new Error(error.message);
+    return { code: (inserted as { code: string }).code };
+  });
