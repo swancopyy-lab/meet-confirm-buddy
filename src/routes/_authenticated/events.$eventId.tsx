@@ -297,7 +297,13 @@ function EventEditor() {
         </TabsList>
 
         <TabsContent value="invitations" className="space-y-4">
+          {ev.qr_enabled === false && (ev as unknown as { public_code?: string | null }).public_code && (
+            <SharedLinkCard
+              url={`${origin}/g/${(ev as unknown as { public_code: string }).public_code}`}
+            />
+          )}
           {isHost && (
+
             <Card className="border-gold/30">
               <CardHeader>
                 <CardTitle className="font-serif text-lg">توليد دعوات جديدة</CardTitle>
