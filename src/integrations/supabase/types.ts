@@ -95,6 +95,7 @@ export type Database = {
           notes: string | null
           number_in_filename: boolean
           number_on_image: boolean
+          public_code: string | null
           qr_bg_color: string
           qr_color: string
           qr_ecc: string
@@ -149,6 +150,7 @@ export type Database = {
           notes?: string | null
           number_in_filename?: boolean
           number_on_image?: boolean
+          public_code?: string | null
           qr_bg_color?: string
           qr_color?: string
           qr_ecc?: string
@@ -203,6 +205,7 @@ export type Database = {
           notes?: string | null
           number_in_filename?: boolean
           number_on_image?: boolean
+          public_code?: string | null
           qr_bg_color?: string
           qr_color?: string
           qr_ecc?: string

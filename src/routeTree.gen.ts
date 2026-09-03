@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SScanCodeRouteImport } from './routes/s.$scanCode'
 import { Route as ICodeRouteImport } from './routes/i.$code'
+import { Route as GPublicCodeRouteImport } from './routes/g.$publicCode'
 import { Route as AuthenticatedScanRouteImport } from './routes/_authenticated/scan'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -41,6 +42,11 @@ const SScanCodeRoute = SScanCodeRouteImport.update({
 const ICodeRoute = ICodeRouteImport.update({
   id: '/i/$code',
   path: '/i/$code',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GPublicCodeRoute = GPublicCodeRouteImport.update({
+  id: '/g/$publicCode',
+  path: '/g/$publicCode',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedScanRoute = AuthenticatedScanRouteImport.update({
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/scan': typeof AuthenticatedScanRoute
+  '/g/$publicCode': typeof GPublicCodeRoute
   '/i/$code': typeof ICodeRoute
   '/s/$scanCode': typeof SScanCodeRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
@@ -81,6 +88,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/scan': typeof AuthenticatedScanRoute
+  '/g/$publicCode': typeof GPublicCodeRoute
   '/i/$code': typeof ICodeRoute
   '/s/$scanCode': typeof SScanCodeRoute
   '/events/$eventId': typeof AuthenticatedEventsEventIdRoute
@@ -93,6 +101,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/scan': typeof AuthenticatedScanRoute
+  '/g/$publicCode': typeof GPublicCodeRoute
   '/i/$code': typeof ICodeRoute
   '/s/$scanCode': typeof SScanCodeRoute
   '/_authenticated/events/$eventId': typeof AuthenticatedEventsEventIdRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/scan'
+    | '/g/$publicCode'
     | '/i/$code'
     | '/s/$scanCode'
     | '/events/$eventId'
@@ -115,6 +125,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/dashboard'
     | '/scan'
+    | '/g/$publicCode'
     | '/i/$code'
     | '/s/$scanCode'
     | '/events/$eventId'
@@ -126,6 +137,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/_authenticated/scan'
+    | '/g/$publicCode'
     | '/i/$code'
     | '/s/$scanCode'
     | '/_authenticated/events/$eventId'
@@ -135,6 +147,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  GPublicCodeRoute: typeof GPublicCodeRoute
   ICodeRoute: typeof ICodeRoute
   SScanCodeRoute: typeof SScanCodeRoute
 }
@@ -174,6 +187,13 @@ declare module '@tanstack/react-router' {
       path: '/i/$code'
       fullPath: '/i/$code'
       preLoaderRoute: typeof ICodeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/g/$publicCode': {
+      id: '/g/$publicCode'
+      path: '/g/$publicCode'
+      fullPath: '/g/$publicCode'
+      preLoaderRoute: typeof GPublicCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/scan': {
@@ -228,6 +248,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  GPublicCodeRoute: GPublicCodeRoute,
   ICodeRoute: ICodeRoute,
   SScanCodeRoute: SScanCodeRoute,
 }
