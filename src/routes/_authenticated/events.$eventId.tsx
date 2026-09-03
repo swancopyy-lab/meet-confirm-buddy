@@ -419,7 +419,49 @@ function EventEditor() {
   );
 }
 
+function SharedLinkCard({ url }: { url: string }) {
+  return (
+    <Card className="border-gold/40 bg-secondary/30">
+      <CardHeader>
+        <CardTitle className="font-serif text-lg">الرابط الموحّد للمدعوين</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-muted-foreground">
+          هذه المناسبة بدون باركود، أرسل هذا الرابط للجميع ويكتب كل مدعو اسمه ويؤكد حضوره.
+        </p>
+        <div className="flex flex-wrap items-center gap-2">
+          <Input readOnly value={url} className="flex-1 min-w-[220px] text-xs" dir="ltr" />
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => {
+              navigator.clipboard.writeText(url);
+              toast.success("تم نسخ الرابط");
+            }}
+          >
+            نسخ الرابط
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              window.open(
+                `https://wa.me/?text=${encodeURIComponent(`تشرفنا بدعوتكم، سجّل اسمك من الرابط: ${url}`)}`,
+                "_blank",
+              )
+            }
+          >
+            مشاركة واتساب
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function StatCard({
+
   label,
   value,
   icon: Icon,
