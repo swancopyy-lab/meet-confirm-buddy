@@ -174,6 +174,9 @@ export const upsertMyEvent = createServerFn({ method: "POST" })
         default_max_companions: z.number().int().min(0).max(50).optional(),
         default_scan_limit: z.number().int().min(1).max(50).optional(),
         whatsapp_template: z.string().max(2000).optional().nullable(),
+        public_ask_phone: z.boolean().optional(),
+        public_phone_required: z.boolean().optional(),
+        public_ask_apology: z.boolean().optional(),
       })
       .parse(data),
   )
@@ -1026,7 +1029,7 @@ export const submitRsvp = createServerFn({ method: "POST" })
 // ---------- Shared public link (events without QR) ----------
 
 const PUBLIC_EVENT_FIELDS =
-  "id, public_code, title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_show_box, cover_show_caption, companions_enabled, default_max_companions, default_scan_limit";
+  "id, public_code, title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_show_box, cover_show_caption, companions_enabled, default_max_companions, default_scan_limit, public_ask_phone, public_phone_required, public_ask_apology";
 
 export const getEventByPublicCode = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
