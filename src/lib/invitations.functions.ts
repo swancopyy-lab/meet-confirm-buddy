@@ -1064,7 +1064,7 @@ export const joinPublicEvent = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: event, error: evErr } = await supabaseAdmin
       .from("events")
-      .select("id, host_id, qr_enabled, default_max_companions, default_scan_limit")
+      .select("id, host_id, qr_enabled, default_max_companions, default_scan_limit, public_ask_phone, public_phone_required, public_ask_apology")
       .eq("public_code", data.code.toUpperCase())
       .maybeSingle();
     if (evErr) throw new Error(evErr.message);
@@ -1075,8 +1075,15 @@ export const joinPublicEvent = createServerFn({ method: "POST" })
       qr_enabled: boolean | null;
       default_max_companions: number | null;
       default_scan_limit: number | null;
+      public_ask_phone: boolean | null;
+      public_phone_required: boolean | null;
+      public_ask_apology: boolean | null;
     };
     const maxCompanions = ev.default_max_companions ?? 0;
+    const phone = ev.public_ask_phone === false ? null : data.phone?.trim() || null;
+    if (ev.public_ask_phone !== false && ev.public_phone_required === true && !phone) {
+      throw new Error("رقم الجوال مطلوب");
+    }
     const isAttending = data.status === "attending";
     const requested = isAttending ? (data.companions ?? 0) : 0;
     if (requested > maxCompanions) {
