@@ -95,7 +95,10 @@ export type Database = {
           notes: string | null
           number_in_filename: boolean
           number_on_image: boolean
+          public_ask_apology: boolean
+          public_ask_phone: boolean
           public_code: string | null
+          public_phone_required: boolean
           qr_bg_color: string
           qr_color: string
           qr_ecc: string
@@ -150,7 +153,10 @@ export type Database = {
           notes?: string | null
           number_in_filename?: boolean
           number_on_image?: boolean
+          public_ask_apology?: boolean
+          public_ask_phone?: boolean
           public_code?: string | null
+          public_phone_required?: boolean
           qr_bg_color?: string
           qr_color?: string
           qr_ecc?: string
@@ -205,7 +211,10 @@ export type Database = {
           notes?: string | null
           number_in_filename?: boolean
           number_on_image?: boolean
+          public_ask_apology?: boolean
+          public_ask_phone?: boolean
           public_code?: string | null
+          public_phone_required?: boolean
           qr_bg_color?: string
           qr_color?: string
           qr_ecc?: string
