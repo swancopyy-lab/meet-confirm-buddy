@@ -1114,7 +1114,8 @@ export const joinPublicEvent = createServerFn({ method: "POST" })
         rsvp_status: data.status,
         companions: requested,
         responded_at: new Date().toISOString(),
-        apology_message: isAttending ? null : data.apology_message || null,
+        apology_message:
+          isAttending || ev.public_ask_apology === false ? null : data.apology_message || null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
       .select("code")
