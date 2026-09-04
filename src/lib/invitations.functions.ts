@@ -1107,7 +1107,7 @@ export const joinPublicEvent = createServerFn({ method: "POST" })
         code: generateCode(),
         scan_code: generateScanCode(),
         guest_name: data.guest_name,
-        phone: data.phone || null,
+        phone,
         display_number: nextNum,
         max_companions: maxCompanions,
         scan_limit: ev.default_scan_limit ?? 1,
