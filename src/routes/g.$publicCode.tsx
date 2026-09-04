@@ -81,19 +81,17 @@ function PublicJoinPage() {
     cover_image_url?: string | null;
     companions_enabled?: boolean | null;
     default_max_companions?: number | null;
+    public_ask_phone?: boolean | null;
+    public_phone_required?: boolean | null;
+    public_ask_apology?: boolean | null;
   };
-  const navigate = useNavigate();
-  const joinFn = useServerFn(joinPublicEvent);
-
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [companions, setCompanions] = useState(0);
-  const [apology, setApology] = useState("");
-  const [mode, setMode] = useState<"attending" | "declined" | null>(null);
-
+...
   const maxCompanions = event.default_max_companions ?? 0;
   const companionsEnabled = (event.companions_enabled ?? true) && maxCompanions > 0;
   const over = companions > maxCompanions;
+  const askPhone = event.public_ask_phone !== false;
+  const phoneRequired = askPhone && event.public_phone_required === true;
+  const askApology = event.public_ask_apology !== false;
 
   const mutation = useMutation({
     mutationFn: (status: "attending" | "declined") =>
