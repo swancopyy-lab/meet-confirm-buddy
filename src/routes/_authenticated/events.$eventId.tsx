@@ -1745,6 +1745,9 @@ function EventForm({
     companions_enabled?: boolean;
     qr_enabled?: boolean;
     whatsapp_template?: string | null;
+    public_ask_phone?: boolean | null;
+    public_phone_required?: boolean | null;
+    public_ask_apology?: boolean | null;
   };
   onSubmit: (v: {
     title: string;
@@ -1758,11 +1761,17 @@ function EventForm({
     companions_enabled?: boolean;
     qr_enabled?: boolean;
     whatsapp_template?: string | null;
+    public_ask_phone?: boolean;
+    public_phone_required?: boolean;
+    public_ask_apology?: boolean;
   }) => void;
   loading?: boolean;
 }) {
   const [companionsOn, setCompanionsOn] = useState<boolean>(initial?.companions_enabled ?? true);
   const [qrOn, setQrOn] = useState<boolean>(initial?.qr_enabled ?? true);
+  const [askPhone, setAskPhone] = useState<boolean>(initial?.public_ask_phone !== false);
+  const [phoneRequired, setPhoneRequired] = useState<boolean>(initial?.public_phone_required === true);
+  const [askApology, setAskApology] = useState<boolean>(initial?.public_ask_apology !== false);
 
   return (
     <form className="space-y-4" onSubmit={(e) => {
@@ -1779,6 +1788,9 @@ function EventForm({
         scan_date: (fd.get("scan_date") as string) || null,
         companions_enabled: companionsOn,
         qr_enabled: qrOn,
+        public_ask_phone: askPhone,
+        public_phone_required: phoneRequired,
+        public_ask_apology: askApology,
         whatsapp_template: ((fd.get("whatsapp_template") as string) || "").trim() || null,
       });
     }}>
@@ -1854,6 +1866,26 @@ function EventForm({
           دعوة بباركود (إلغاء الخيار = دعوة بدون باركود)
         </label>
       </div>
+
+      {!qrOn && (
+        <div className="space-y-3 rounded-md border border-gold/30 bg-secondary/30 p-3">
+          <p className="font-serif text-sm font-semibold">خيارات صفحة التسجيل الذاتي (الرابط الموحد)</p>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={askPhone} onChange={(e) => setAskPhone(e.target.checked)} />
+            سؤال المدعو عن رقم الجوال
+          </label>
+          {askPhone && (
+            <label className="flex items-center gap-2 text-sm pr-6">
+              <input type="checkbox" checked={phoneRequired} onChange={(e) => setPhoneRequired(e.target.checked)} />
+              رقم الجوال إلزامي
+            </label>
+          )}
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={askApology} onChange={(e) => setAskApology(e.target.checked)} />
+            إظهار حقل رسالة الاعتذار
+          </label>
+        </div>
+      )}
 
 
 

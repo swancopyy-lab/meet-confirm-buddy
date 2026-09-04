@@ -81,6 +81,9 @@ function PublicJoinPage() {
     cover_image_url?: string | null;
     companions_enabled?: boolean | null;
     default_max_companions?: number | null;
+    public_ask_phone?: boolean | null;
+    public_phone_required?: boolean | null;
+    public_ask_apology?: boolean | null;
   };
   const navigate = useNavigate();
   const joinFn = useServerFn(joinPublicEvent);
@@ -94,6 +97,9 @@ function PublicJoinPage() {
   const maxCompanions = event.default_max_companions ?? 0;
   const companionsEnabled = (event.companions_enabled ?? true) && maxCompanions > 0;
   const over = companions > maxCompanions;
+  const askPhone = event.public_ask_phone !== false;
+  const phoneRequired = askPhone && event.public_phone_required === true;
+  const askApology = event.public_ask_apology !== false;
 
   const mutation = useMutation({
     mutationFn: (status: "attending" | "declined") =>
@@ -117,6 +123,10 @@ function PublicJoinPage() {
   function submit(status: "attending" | "declined") {
     if (name.trim().length < 2) {
       toast.error("اكتب اسمك أولاً");
+      return;
+    }
+    if (phoneRequired && phone.trim().length < 8) {
+      toast.error("اكتب رقم جوالك أولاً");
       return;
     }
     if (status === "attending" && over) {
@@ -179,16 +189,18 @@ function PublicJoinPage() {
                 placeholder="اكتب اسمك الكامل"
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="g-phone">رقم الجوال (اختياري)</Label>
-              <Input
-                id="g-phone"
-                value={phone}
-                inputMode="tel"
-                onChange={(e) => setPhone(e.target.value)}
-                placeholder="05xxxxxxxx"
-              />
-            </div>
+            {askPhone && (
+              <div className="space-y-2">
+                <Label htmlFor="g-phone">رقم الجوال {phoneRequired ? "" : "(اختياري)"}</Label>
+                <Input
+                  id="g-phone"
+                  value={phone}
+                  inputMode="tel"
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="05xxxxxxxx"
+                />
+              </div>
+            )}
 
             {companionsEnabled && (
               <div className="space-y-2">
@@ -229,16 +241,18 @@ function PublicJoinPage() {
               </Button>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="g-apology">رسالة اعتذار (اختياري)</Label>
-              <Textarea
-                id="g-apology"
-                value={apology}
-                onChange={(e) => setApology(e.target.value)}
-                placeholder="اكتب اعتذارك هنا"
-                rows={3}
-              />
-            </div>
+            {askApology && (
+              <div className="space-y-2">
+                <Label htmlFor="g-apology">رسالة اعتذار (اختياري)</Label>
+                <Textarea
+                  id="g-apology"
+                  value={apology}
+                  onChange={(e) => setApology(e.target.value)}
+                  placeholder="اكتب اعتذارك هنا"
+                  rows={3}
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

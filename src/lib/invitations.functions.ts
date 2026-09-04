@@ -174,6 +174,9 @@ export const upsertMyEvent = createServerFn({ method: "POST" })
         default_max_companions: z.number().int().min(0).max(50).optional(),
         default_scan_limit: z.number().int().min(1).max(50).optional(),
         whatsapp_template: z.string().max(2000).optional().nullable(),
+        public_ask_phone: z.boolean().optional(),
+        public_phone_required: z.boolean().optional(),
+        public_ask_apology: z.boolean().optional(),
       })
       .parse(data),
   )
@@ -1026,7 +1029,7 @@ export const submitRsvp = createServerFn({ method: "POST" })
 // ---------- Shared public link (events without QR) ----------
 
 const PUBLIC_EVENT_FIELDS =
-  "id, public_code, title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_show_box, cover_show_caption, companions_enabled, default_max_companions, default_scan_limit";
+  "id, public_code, title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_show_box, cover_show_caption, companions_enabled, default_max_companions, default_scan_limit, public_ask_phone, public_phone_required, public_ask_apology";
 
 export const getEventByPublicCode = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
@@ -1061,7 +1064,7 @@ export const joinPublicEvent = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: event, error: evErr } = await supabaseAdmin
       .from("events")
-      .select("id, host_id, qr_enabled, default_max_companions, default_scan_limit")
+      .select("id, host_id, qr_enabled, default_max_companions, default_scan_limit, public_ask_phone, public_phone_required, public_ask_apology")
       .eq("public_code", data.code.toUpperCase())
       .maybeSingle();
     if (evErr) throw new Error(evErr.message);
@@ -1072,8 +1075,15 @@ export const joinPublicEvent = createServerFn({ method: "POST" })
       qr_enabled: boolean | null;
       default_max_companions: number | null;
       default_scan_limit: number | null;
+      public_ask_phone: boolean | null;
+      public_phone_required: boolean | null;
+      public_ask_apology: boolean | null;
     };
     const maxCompanions = ev.default_max_companions ?? 0;
+    const phone = ev.public_ask_phone === false ? null : data.phone?.trim() || null;
+    if (ev.public_ask_phone !== false && ev.public_phone_required === true && !phone) {
+      throw new Error("رقم الجوال مطلوب");
+    }
     const isAttending = data.status === "attending";
     const requested = isAttending ? (data.companions ?? 0) : 0;
     if (requested > maxCompanions) {
@@ -1097,14 +1107,15 @@ export const joinPublicEvent = createServerFn({ method: "POST" })
         code: generateCode(),
         scan_code: generateScanCode(),
         guest_name: data.guest_name,
-        phone: data.phone || null,
+        phone,
         display_number: nextNum,
         max_companions: maxCompanions,
         scan_limit: ev.default_scan_limit ?? 1,
         rsvp_status: data.status,
         companions: requested,
         responded_at: new Date().toISOString(),
-        apology_message: isAttending ? null : data.apology_message || null,
+        apology_message:
+          isAttending || ev.public_ask_apology === false ? null : data.apology_message || null,
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
       } as any)
       .select("code")
