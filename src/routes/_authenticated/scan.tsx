@@ -21,14 +21,18 @@ type ResultState =
   | { status: "error"; message: string };
 
 function extractScanCode(raw: string): string {
-  const trimmed = raw.trim();
+  let trimmed = raw.trim();
+  // Some scanners return the URL without a scheme; try adding https://.
+  if (!/^https?:\/\//i.test(trimmed)) {
+    trimmed = `https://${trimmed}`;
+  }
   // QR encodes /s/<scanCode>; pull the last path segment.
   try {
     const u = new URL(trimmed);
     const parts = u.pathname.split("/").filter(Boolean);
-    return parts[parts.length - 1] || trimmed;
+    return parts[parts.length - 1] || raw.trim();
   } catch {
-    return trimmed;
+    return raw.trim();
   }
 }
 
