@@ -846,7 +846,7 @@ export const resetInvitation = createServerFn({ method: "POST" })
 export const checkInByScanCode = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
-    z.object({ scan_code: z.string().trim().min(4).max(64) }).parse(data),
+    z.object({ scan_code: z.string().trim().min(4).max(500) }).parse(data),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -887,7 +887,7 @@ export const checkInByScanCode = createServerFn({ method: "POST" })
 
 export const scanPublicByCode = createServerFn({ method: "POST" })
   .inputValidator((data: unknown) =>
-    z.object({ scan_code: z.string().trim().min(4).max(64) }).parse(data),
+    z.object({ scan_code: z.string().trim().min(4).max(500) }).parse(data),
   )
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
