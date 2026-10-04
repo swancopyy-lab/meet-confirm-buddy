@@ -14,7 +14,7 @@ import { CalendarDays, MapPin, Sparkles, CheckCircle2, XCircle } from "lucide-re
 export const Route = createFileRoute("/g/$publicCode")({
   head: ({ loaderData }) => {
     const ev = loaderData as
-      | { title?: string | null; groom_name?: string | null; bride_name?: string | null; cover_image_url?: string | null }
+      | { title?: string | null; groom_name?: string | null; bride_name?: string | null; cover_image_url?: string | null; invitation_image_url?: string | null; og_image_url?: string | null }
       | undefined;
     const title = ev?.groom_name && ev?.bride_name
       ? `دعوة حفل ${ev.groom_name} و ${ev.bride_name}`
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/g/$publicCode")({
   component: PublicJoinPage,
   errorComponent: ({ error }) => (
     <div className="flex min-h-screen items-center justify-center p-6 text-center">
-      <p className="text-destructive">{error.message}</p>
+      <p className="text-destructive">{(error as Error).message}</p>
     </div>
   ),
   notFoundComponent: () => (

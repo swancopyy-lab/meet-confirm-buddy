@@ -15,7 +15,7 @@ import { composeInvitationImage, companionsLabel } from "@/lib/compose-invitatio
 
 export const Route = createFileRoute("/i/$code")({
   head: ({ loaderData }) => {
-    const ev = (loaderData as { event?: { groom_name?: string | null; bride_name?: string | null; title?: string | null; cover_image_url?: string | null; invitation_image_url?: string | null } } | undefined)?.event;
+    const ev = (loaderData as { event?: { groom_name?: string | null; bride_name?: string | null; title?: string | null; cover_image_url?: string | null; invitation_image_url?: string | null; og_image_url?: string | null } } | undefined)?.event;
     const title = ev?.groom_name && ev?.bride_name
       ? `دعوة حفل ${ev.groom_name} و ${ev.bride_name}`
       : ev?.title || `دعوة`;
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/i/$code")({
   component: InvitePage,
   errorComponent: ({ error }) => (
     <div className="flex min-h-screen items-center justify-center p-6 text-center">
-      <p className="text-destructive">{error.message}</p>
+      <p className="text-destructive">{(error as Error).message}</p>
     </div>
   ),
   notFoundComponent: () => (
