@@ -228,7 +228,7 @@ export const uploadEventImage = createServerFn({ method: "POST" })
     z
       .object({
         event_id: z.string().uuid(),
-        kind: z.enum(["invitation", "success", "already", "cover"]),
+        kind: z.enum(["invitation", "success", "already", "cover", "og"]),
         data_url: z.string().max(8_000_000),
       })
       .parse(data),
@@ -270,8 +270,12 @@ export const uploadEventImage = createServerFn({ method: "POST" })
           ? "success_image_url"
           : data.kind === "cover"
             ? "cover_image_url"
-            : "already_image_url";
-    const patch: Record<string, string> = { [col]: signed.signedUrl };
+            : data.kind === "og"
+              ? "og_image_url"
+              : "already_image_url";
+    const patch: Record<string, string | null> = { [col]: signed.signedUrl };
+    // A new cover/invitation image invalidates the small link-preview copy
+    if (data.kind === "cover" || data.kind === "invitation") patch.og_image_url = null;
     const { data: updated, error: uErr } = await supabase
       .from("events")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -305,6 +309,7 @@ export const clearEventImage = createServerFn({ method: "POST" })
             ? "cover_image_url"
             : "already_image_url";
     const patch: Record<string, null> = { [col]: null };
+    if (data.kind === "cover" || data.kind === "invitation") patch.og_image_url = null;
     const { error } = await supabase
       .from("events")
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -966,7 +971,7 @@ export const getInvitationPublic = createServerFn({ method: "GET" })
     const { data: event } = await supabaseAdmin
       .from("events")
       .select(
-        "title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_number_color, cover_caption_show_box, cover_caption_show_number, cover_show_caption, caption_show_name, caption_show_companions, default_max_companions, whatsapp_template",
+        "title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, invitation_image_url, qr_x, qr_y, qr_size, companions_enabled, caption_show_number, caption_text_color, caption_number_color, caption_font_family, caption_font_size, caption_x, caption_y, caption_show_box, caption_align, caption_font_weight, number_on_image, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_number_color, cover_caption_show_box, cover_caption_show_number, cover_show_caption, caption_show_name, caption_show_companions, default_max_companions, whatsapp_template, og_image_url",
       )
       .eq("id", inv.event_id)
       .single();
@@ -1029,7 +1034,7 @@ export const submitRsvp = createServerFn({ method: "POST" })
 // ---------- Shared public link (events without QR) ----------
 
 const PUBLIC_EVENT_FIELDS =
-  "id, public_code, title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, cover_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_show_box, cover_show_caption, companions_enabled, default_max_companions, default_scan_limit, public_ask_phone, public_phone_required, public_ask_apology";
+  "id, public_code, title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, cover_image_url, invitation_image_url, og_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_show_box, cover_show_caption, companions_enabled, default_max_companions, default_scan_limit, public_ask_phone, public_phone_required, public_ask_apology";
 
 export const getEventByPublicCode = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>

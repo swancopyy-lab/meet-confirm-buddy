@@ -20,7 +20,7 @@ export const Route = createFileRoute("/g/$publicCode")({
       ? `دعوة حفل ${ev.groom_name} و ${ev.bride_name}`
       : ev?.title || "دعوة";
     const desc = "سجّل اسمك وأكّد حضورك للحفل.";
-    const img = ev?.cover_image_url || undefined;
+    const img = ev?.og_image_url || ev?.cover_image_url || ev?.invitation_image_url || undefined;
     const meta: Array<{ title?: string; name?: string; property?: string; content?: string }> = [
       { title },
       { name: "description", content: desc },
