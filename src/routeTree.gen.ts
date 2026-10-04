@@ -9,49 +9,34 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedScanRouteImport } from './routes/_authenticated/scan'
-import { Route as GPublicCodeRouteImport } from './routes/g.$publicCode'
-import { Route as ICodeRouteImport } from './routes/i.$code'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as SScanCodeRouteImport } from './routes/s.$scanCode'
+import { Route as ICodeRouteImport } from './routes/i.$code'
+import { Route as GPublicCodeRouteImport } from './routes/g.$publicCode'
+import { Route as AuthenticatedScanRouteImport } from './routes/_authenticated/scan'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedEventsEventIdRouteImport } from './routes/_authenticated/events.$eventId'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedScanRoute = AuthenticatedScanRouteImport.update({
-  id: '/scan',
-  path: '/scan',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const GPublicCodeRoute = GPublicCodeRouteImport.update({
-  id: '/g/$publicCode',
-  path: '/g/$publicCode',
+const SScanCodeRoute = SScanCodeRouteImport.update({
+  id: '/s/$scanCode',
+  path: '/s/$scanCode',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ICodeRoute = ICodeRouteImport.update({
@@ -59,10 +44,25 @@ const ICodeRoute = ICodeRouteImport.update({
   path: '/i/$code',
   getParentRoute: () => rootRouteImport,
 } as any)
-const SScanCodeRoute = SScanCodeRouteImport.update({
-  id: '/s/$scanCode',
-  path: '/s/$scanCode',
+const GPublicCodeRoute = GPublicCodeRouteImport.update({
+  id: '/g/$publicCode',
+  path: '/g/$publicCode',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedScanRoute = AuthenticatedScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedEventsEventIdRoute =
   AuthenticatedEventsEventIdRouteImport.update({
@@ -154,11 +154,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -168,39 +168,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/scan': {
-      id: '/_authenticated/scan'
-      path: '/scan'
-      fullPath: '/scan'
-      preLoaderRoute: typeof AuthenticatedScanRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/g/$publicCode': {
-      id: '/g/$publicCode'
-      path: '/g/$publicCode'
-      fullPath: '/g/$publicCode'
-      preLoaderRoute: typeof GPublicCodeRouteImport
+    '/s/$scanCode': {
+      id: '/s/$scanCode'
+      path: '/s/$scanCode'
+      fullPath: '/s/$scanCode'
+      preLoaderRoute: typeof SScanCodeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/i/$code': {
@@ -210,12 +189,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ICodeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/s/$scanCode': {
-      id: '/s/$scanCode'
-      path: '/s/$scanCode'
-      fullPath: '/s/$scanCode'
-      preLoaderRoute: typeof SScanCodeRouteImport
+    '/g/$publicCode': {
+      id: '/g/$publicCode'
+      path: '/g/$publicCode'
+      fullPath: '/g/$publicCode'
+      preLoaderRoute: typeof GPublicCodeRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/scan': {
+      id: '/_authenticated/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof AuthenticatedScanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/events/$eventId': {
       id: '/_authenticated/events/$eventId'
