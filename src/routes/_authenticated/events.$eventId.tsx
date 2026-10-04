@@ -1,7 +1,8 @@
 import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { makeLinkPreviewImage } from "@/lib/link-preview-image";
 import {
   addCollaborator,
   bulkUpdateCaptions,
@@ -114,6 +115,7 @@ type EventRow = {
   caption_align: "left" | "center" | "right";
   caption_font_weight: number;
   cover_image_url: string | null;
+  og_image_url?: string | null;
   cover_caption_x: number;
   cover_caption_y: number;
   cover_caption_align: "left" | "center" | "right";
@@ -233,6 +235,26 @@ function EventEditor() {
       clearImg({ data: { event_id: eventId, kind } }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["event", eventId] }),
   });
+
+  // Keep a small JPEG copy for WhatsApp/social link previews (large PNGs are ignored by WhatsApp)
+  const ogBusyRef = useRef<string>("");
+  const evForOg = eventQ.data?.event as EventRow | undefined;
+  const ogSource = evForOg ? evForOg.cover_image_url || evForOg.invitation_image_url : null;
+  useEffect(() => {
+    if (!evForOg || eventQ.data?.role !== "host") return;
+    if (!ogSource || evForOg.og_image_url) return;
+    if (ogBusyRef.current === ogSource) return;
+    ogBusyRef.current = ogSource;
+    (async () => {
+      try {
+        const dataUrl = await makeLinkPreviewImage(ogSource);
+        await uploadImg({ data: { event_id: eventId, kind: "og", data_url: dataUrl } });
+        qc.invalidateQueries({ queryKey: ["event", eventId] });
+      } catch (e) {
+        console.warn("link preview image failed", e);
+      }
+    })();
+  }, [evForOg, ogSource, eventId, eventQ.data?.role, uploadImg, qc]);
 
   const stats = useMemo(() => {
     const list = (invQ.data ?? []) as Invitation[];
