@@ -95,6 +95,7 @@ export type Database = {
           notes: string | null
           number_in_filename: boolean
           number_on_image: boolean
+          og_image_url: string | null
           public_ask_apology: boolean
           public_ask_phone: boolean
           public_code: string | null
@@ -153,6 +154,7 @@ export type Database = {
           notes?: string | null
           number_in_filename?: boolean
           number_on_image?: boolean
+          og_image_url?: string | null
           public_ask_apology?: boolean
           public_ask_phone?: boolean
           public_code?: string | null
@@ -211,6 +213,7 @@ export type Database = {
           notes?: string | null
           number_in_filename?: boolean
           number_on_image?: boolean
+          og_image_url?: string | null
           public_ask_apology?: boolean
           public_ask_phone?: boolean
           public_code?: string | null

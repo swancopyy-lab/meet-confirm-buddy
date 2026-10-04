@@ -14,13 +14,13 @@ import { CalendarDays, MapPin, Sparkles, CheckCircle2, XCircle } from "lucide-re
 export const Route = createFileRoute("/g/$publicCode")({
   head: ({ loaderData }) => {
     const ev = loaderData as
-      | { title?: string | null; groom_name?: string | null; bride_name?: string | null; cover_image_url?: string | null }
+      | { title?: string | null; groom_name?: string | null; bride_name?: string | null; cover_image_url?: string | null; invitation_image_url?: string | null; og_image_url?: string | null }
       | undefined;
     const title = ev?.groom_name && ev?.bride_name
       ? `دعوة حفل ${ev.groom_name} و ${ev.bride_name}`
       : ev?.title || "دعوة";
     const desc = "سجّل اسمك وأكّد حضورك للحفل.";
-    const img = ev?.cover_image_url || undefined;
+    const img = ev?.og_image_url || ev?.cover_image_url || ev?.invitation_image_url || undefined;
     const meta: Array<{ title?: string; name?: string; property?: string; content?: string }> = [
       { title },
       { name: "description", content: desc },
@@ -43,7 +43,7 @@ export const Route = createFileRoute("/g/$publicCode")({
   component: PublicJoinPage,
   errorComponent: ({ error }) => (
     <div className="flex min-h-screen items-center justify-center p-6 text-center">
-      <p className="text-destructive">{error.message}</p>
+      <p className="text-destructive">{(error as Error).message}</p>
     </div>
   ),
   notFoundComponent: () => (
