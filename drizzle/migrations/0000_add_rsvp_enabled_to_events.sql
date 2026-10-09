@@ -1,0 +1,2 @@
+ALTER TABLE public.events ADD COLUMN rsvp_enabled boolean NOT NULL DEFAULT true;
+COMMENT ON COLUMN public.events.rsvp_enabled IS 'Whether the public self-registration page collects RSVP responses. false = view-only invitation link.';

@@ -84,6 +84,7 @@ function PublicJoinPage() {
     public_ask_phone?: boolean | null;
     public_phone_required?: boolean | null;
     public_ask_apology?: boolean | null;
+    rsvp_enabled?: boolean | null;
   };
   const navigate = useNavigate();
   const joinFn = useServerFn(joinPublicEvent);
@@ -175,6 +176,7 @@ function PublicJoinPage() {
           </Card>
         )}
 
+        {event.rsvp_enabled !== false && (
         <Card className="border-gold/30">
           <CardHeader>
             <CardTitle className="font-serif text-xl">سجّل اسمك وأكّد حضورك</CardTitle>
@@ -255,6 +257,7 @@ function PublicJoinPage() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
     </div>
   );

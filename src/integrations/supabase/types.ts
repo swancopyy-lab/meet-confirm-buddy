@@ -108,6 +108,7 @@ export type Database = {
           qr_size: number
           qr_x: number
           qr_y: number
+          rsvp_enabled: boolean
           scan_date: string | null
           success_image_url: string | null
           title: string
@@ -167,6 +168,7 @@ export type Database = {
           qr_size?: number
           qr_x?: number
           qr_y?: number
+          rsvp_enabled?: boolean
           scan_date?: string | null
           success_image_url?: string | null
           title?: string
@@ -226,6 +228,7 @@ export type Database = {
           qr_size?: number
           qr_x?: number
           qr_y?: number
+          rsvp_enabled?: boolean
           scan_date?: string | null
           success_image_url?: string | null
           title?: string

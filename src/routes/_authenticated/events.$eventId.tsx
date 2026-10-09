@@ -1770,6 +1770,7 @@ function EventForm({
     public_ask_phone?: boolean | null;
     public_phone_required?: boolean | null;
     public_ask_apology?: boolean | null;
+    rsvp_enabled?: boolean | null;
   };
   onSubmit: (v: {
     title: string;
@@ -1786,6 +1787,7 @@ function EventForm({
     public_ask_phone?: boolean;
     public_phone_required?: boolean;
     public_ask_apology?: boolean;
+    rsvp_enabled?: boolean;
   }) => void;
   loading?: boolean;
 }) {
@@ -1794,6 +1796,7 @@ function EventForm({
   const [askPhone, setAskPhone] = useState<boolean>(initial?.public_ask_phone !== false);
   const [phoneRequired, setPhoneRequired] = useState<boolean>(initial?.public_phone_required === true);
   const [askApology, setAskApology] = useState<boolean>(initial?.public_ask_apology !== false);
+  const [rsvpOn, setRsvpOn] = useState<boolean>(initial?.rsvp_enabled !== false);
 
   return (
     <form className="space-y-4" onSubmit={(e) => {
@@ -1813,6 +1816,7 @@ function EventForm({
         public_ask_phone: askPhone,
         public_phone_required: phoneRequired,
         public_ask_apology: askApology,
+        rsvp_enabled: rsvpOn,
         whatsapp_template: ((fd.get("whatsapp_template") as string) || "").trim() || null,
       });
     }}>
@@ -1892,6 +1896,10 @@ function EventForm({
       {!qrOn && (
         <div className="space-y-3 rounded-md border border-gold/30 bg-secondary/30 p-3">
           <p className="font-serif text-sm font-semibold">خيارات صفحة التسجيل الذاتي (الرابط الموحد)</p>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={rsvpOn} onChange={(e) => setRsvpOn(e.target.checked)} />
+            تفعيل تأكيد الحضور (إلغاء الخيار = عرض الدعوة فقط بدون أسئلة)
+          </label>
           <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={askPhone} onChange={(e) => setAskPhone(e.target.checked)} />
             سؤال المدعو عن رقم الجوال
