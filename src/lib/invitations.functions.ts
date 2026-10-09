@@ -177,6 +177,7 @@ export const upsertMyEvent = createServerFn({ method: "POST" })
         public_ask_phone: z.boolean().optional(),
         public_phone_required: z.boolean().optional(),
         public_ask_apology: z.boolean().optional(),
+        rsvp_enabled: z.boolean().optional(),
       })
       .parse(data),
   )
@@ -1034,7 +1035,7 @@ export const submitRsvp = createServerFn({ method: "POST" })
 // ---------- Shared public link (events without QR) ----------
 
 const PUBLIC_EVENT_FIELDS =
-  "id, public_code, title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, cover_image_url, invitation_image_url, og_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_show_box, cover_show_caption, companions_enabled, default_max_companions, default_scan_limit, public_ask_phone, public_phone_required, public_ask_apology";
+  "id, public_code, title, qr_enabled, groom_name, bride_name, event_date, venue, venue_map_url, notes, cover_image_url, invitation_image_url, og_image_url, cover_caption_x, cover_caption_y, cover_caption_align, cover_caption_font_family, cover_caption_font_size, cover_caption_font_weight, cover_caption_text_color, cover_caption_show_box, cover_show_caption, companions_enabled, default_max_companions, default_scan_limit, public_ask_phone, public_phone_required, public_ask_apology, rsvp_enabled";
 
 export const getEventByPublicCode = createServerFn({ method: "GET" })
   .inputValidator((data: unknown) =>
@@ -1069,7 +1070,7 @@ export const joinPublicEvent = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: event, error: evErr } = await supabaseAdmin
       .from("events")
-      .select("id, host_id, qr_enabled, default_max_companions, default_scan_limit, public_ask_phone, public_phone_required, public_ask_apology")
+      .select("id, host_id, qr_enabled, default_max_companions, default_scan_limit, public_ask_phone, public_phone_required, public_ask_apology, rsvp_enabled")
       .eq("public_code", data.code.toUpperCase())
       .maybeSingle();
     if (evErr) throw new Error(evErr.message);
@@ -1083,7 +1084,11 @@ export const joinPublicEvent = createServerFn({ method: "POST" })
       public_ask_phone: boolean | null;
       public_phone_required: boolean | null;
       public_ask_apology: boolean | null;
+      rsvp_enabled: boolean | null;
     };
+    if (ev.rsvp_enabled === false) {
+      throw new Error("هذه الدعوة للعرض فقط ولا تستقبل تأكيد حضور");
+    }
     const maxCompanions = ev.default_max_companions ?? 0;
     const phone = ev.public_ask_phone === false ? null : data.phone?.trim() || null;
     if (ev.public_ask_phone !== false && ev.public_phone_required === true && !phone) {
