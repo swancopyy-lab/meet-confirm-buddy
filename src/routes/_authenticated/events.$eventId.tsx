@@ -1897,6 +1897,10 @@ function EventForm({
         <div className="space-y-3 rounded-md border border-gold/30 bg-secondary/30 p-3">
           <p className="font-serif text-sm font-semibold">خيارات صفحة التسجيل الذاتي (الرابط الموحد)</p>
           <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={rsvpOn} onChange={(e) => setRsvpOn(e.target.checked)} />
+            تفعيل تأكيد الحضور (إلغاء الخيار = عرض الدعوة فقط بدون أسئلة)
+          </label>
+          <label className="flex items-center gap-2 text-sm">
             <input type="checkbox" checked={askPhone} onChange={(e) => setAskPhone(e.target.checked)} />
             سؤال المدعو عن رقم الجوال
           </label>
