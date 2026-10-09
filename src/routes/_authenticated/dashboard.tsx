@@ -25,11 +25,11 @@ function EventsList() {
 
   const q = useQuery({ queryKey: ["my-events"], queryFn: () => list() });
   const [showNew, setShowNew] = useState(false);
-  const [withQr, setWithQr] = useState(true);
+  const [inviteMode, setInviteMode] = useState<"qr" | "rsvp" | "view">("qr");
 
 
   const createMut = useMutation({
-    mutationFn: (v: { title: string; qr_enabled: boolean }) => create({ data: v }),
+    mutationFn: (v: { title: string; qr_enabled: boolean; rsvp_enabled: boolean }) => create({ data: v }),
     onSuccess: (row) => {
       toast.success("تم إنشاء المناسبة");
       qc.invalidateQueries({ queryKey: ["my-events"] });
@@ -78,7 +78,11 @@ function EventsList() {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
                 const title = (fd.get("title") as string)?.trim() || "حفل زفاف";
-                createMut.mutate({ title, qr_enabled: withQr });
+                createMut.mutate({
+                  title,
+                  qr_enabled: inviteMode === "qr",
+                  rsvp_enabled: inviteMode !== "view",
+                });
               }}
             >
               <div className="space-y-2 min-w-[240px]">
@@ -88,17 +92,18 @@ function EventsList() {
 
               <div className="space-y-2">
                 <Label>نوع الدعوة</Label>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid gap-2 sm:grid-cols-3">
                   {[
-                    { v: true, t: "دعوة بباركود", d: "لكل مدعو رمز QR يُمسح عند الباب" },
-                    { v: false, t: "دعوة بدون باركود", d: "صورة دعوة وتأكيد حضور فقط" },
+                    { v: "qr" as const, t: "دعوة بباركود", d: "لكل مدعو رمز QR يُمسح عند الباب" },
+                    { v: "rsvp" as const, t: "بدون باركود", d: "رابط موحد يؤكد فيه المدعو حضوره" },
+                    { v: "view" as const, t: "بدون تأكيد حضور", d: "رابط موحد لعرض الدعوة فقط" },
                   ].map((o) => (
                     <button
-                      key={String(o.v)}
+                      key={o.v}
                       type="button"
-                      onClick={() => setWithQr(o.v)}
+                      onClick={() => setInviteMode(o.v)}
                       className={`rounded-lg border p-3 text-right transition-colors ${
-                        withQr === o.v
+                        inviteMode === o.v
                           ? "border-gold bg-secondary"
                           : "border-border hover:bg-muted/50"
                       }`}
